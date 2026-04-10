@@ -30,18 +30,6 @@ A comprehensive knowledge base for deploying custom Pages, Workspaces, and HTML 
 
 ---
 
-### [`brd-to-implementation-spec`](./brd-to-implementation-spec/)
-
-Converts any Business Requirements Document into a complete, Claude Code-executable technical specification for Frappe v16 projects — optionally with a Flutter mobile app using `frappe_mobile_sdk`. The skill runs a six-phase process: BRD internalization (extracting all user types, workflows, fields, roles, and integration points), data model derivation (DocType classification, relationships, submittable vs master vs child), optional SDK/controller repo reading (including the intentional `doctype_meta_modifed_at` typo the SDK parses), spec generation across 13 sections, Claude Code tooling setup (Everything Claude Code agents, Autoresearch quality gates, Paperclip for parallel sessions), and a `CLAUDE.md` template for the project root. The output is a single Markdown handoff document with a phased build order, dependency chain, and quality gates — no architectural decisions left as "TBD".
-
----
-
-### [`figma-vs-code-comparison`](./figma-vs-code-comparison/)
-
-Eliminates the class of errors that occur when implementing Figma designs into code by enforcing a non-negotiable protocol: always call `get_design_context` against the live Figma node before touching any file, extract exact values (font weights, spacing, text content, colors), state the delta explicitly before writing, and change only what Figma confirms — nothing inferred, nothing globalised. The skill is anchored in a documented post-mortem from the GPZL project where four incorrect values were committed because a secondary comparison doc was used instead of the live design. Includes the Figma token → SCSS mapping table, a severity-graded comparison report format, red-flag triggers that require stopping and re-reading Figma, and a pre-commit checklist gated by `autoresearch:ship`. Use whenever a Figma URL and a code repository appear together in the same task.
-
----
-
 ## Usage
 
 These skills are consumed by Claude (via [Claude.ai](https://claude.ai) or [Claude Code](https://claude.ai/code)) before executing Frappe-related tasks. In Claude.ai, reference a skill by pointing Claude at the relevant `SKILL.md` file path. In Claude Code, add the skill path to your `CLAUDE.md` or reference it in your session context.
@@ -56,7 +44,7 @@ skill-name/
     └── evals.json    # Test cases for validating skill performance
 ```
 
-Skills are designed to be **composable**. A typical Frappe project activates multiple skills in sequence — `brd-to-implementation-spec` to generate the tech spec, `frappe-doctype-skill` to review the data model, `frappe-dashboard-design` for admin UI, `frappe-custom-html-block` or `frappe-v16-deployment` for wiring pages into Frappe Desk, and `figma-vs-code-comparison` for pixel-perfect implementation against the design.
+Skills are designed to be **composable**. A typical Frappe project activates multiple skills in sequence — `frappe-doctype-skill` to review the data model, `frappe-dashboard-design` for admin UI, and `frappe-custom-html-block` or `frappe-v16-deployment` for wiring pages into Frappe Desk.
 
 ---
 
