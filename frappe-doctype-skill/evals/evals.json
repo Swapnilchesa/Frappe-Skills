@@ -1,0 +1,45 @@
+{
+  "skill_name": "frappe-doctype-skill",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Design a Grant Application doctype for an NGO. It needs: applicant org name, requested amount, program (linked to a Program doctype), submission date, status. Multi-stage approval: Program Officer reviews, then Grant Manager approves. Amounts over 50 lakhs escalate to CEO. Give me the full spec.",
+      "expected_output": "Complete spec with all 5 deliverables: (1) DocType schema with all fields including status Select field with all states, (2) form layout with section/column breaks, (3) list view config, (4) role permissions table, (5) workflow JSON with conditional escalation transition for amount > 5000000. Golden Rules applied: status field is read_only, workflow uses apply_workflow not db_set, states named in plain language.",
+      "assertions": [
+        "DocType schema includes all requested fields with correct fieldtypes",
+        "Status field is Select type with all workflow states listed as options",
+        "Status field has read_only:1",
+        "Workflow JSON includes conditional transition with amount condition",
+        "Form layout includes Section Breaks and Column Breaks",
+        "Permissions table covers all relevant roles",
+        "Workflow transitions use plain language action names",
+        "Spec includes list view column recommendations",
+        "Does NOT use db_set for status updates"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I need a child table DocType called 'Grant Milestone' that lives inside a Grant Application. Fields: milestone title, due date, completion date, amount (Currency), status (Pending/Completed/Delayed). The parent Grant Application should show total milestone amount as a computed field.",
+      "expected_output": "Spec for child table DocType with istable:1 flag, correct fieldnames, parent link field. Guidance on embedding via Table fieldtype in parent DocType. Note about fetch_from or formula field for computing total milestone amount in parent. Should NOT include workflow on child table (child tables rarely have their own workflows).",
+      "assertions": [
+        "Child DocType has istable:1",
+        "All requested fields present with correct fieldtypes",
+        "Instructions for adding Table field to parent Grant Application DocType",
+        "Addresses total amount computation (formula field or controller logic)",
+        "Does not add unnecessary workflow to child table"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Our sidebar is blank for the Grant Manager role in v16. They can see the workspace tab but no items in the left panel. What's the most likely cause and how do I fix it?",
+      "expected_output": "Systematic triage starting with most common cause (Bug #1 case-sensitivity in app_data_map). Should cover: (1) console check for frappe.boot.app_data_map casing, (2) role permissions on at least one DocType, (3) Workspace Roles table, (4) Desktop Icon parent+child pair existence, (5) Allow Modules on user profile. Should reference the verification checklist.",
+      "assertions": [
+        "Mentions app_data_map case-sensitivity check",
+        "Provides browser console command to diagnose",
+        "Mentions role permissions on DocType (not just workspace)",
+        "Mentions Desktop Icon connector (parent + child pair)",
+        "Provides verification checklist or step-by-step triage"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "skill_name": "frappe-custom-html-block",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Build a CHB dashboard for a Frappe workspace called 'Grant Management' that shows: total applications, approved count, and a donut chart by status. Doctype is 'Grant Application' with fields name, status, amount. Wire it to the workspace.",
+      "expected_output": "Complete CHB with html/style/script fields. Script must: use CHB_CONFIG, use Promise.all + frappeCallPromise, have three-state HTML (loading/error/content), have explicit limit in get_list, render chart from API data not hardcoded values, use root_element.querySelector not document.getElementById, be wrapped in IIFE. Workspace wiring must set label == custom_block_name.",
+      "assertions": [
+        "Script is wrapped in (function() { ... })()",
+        "Script contains CHB_CONFIG",
+        "Script contains Promise.all",
+        "Script contains frappeCallPromise",
+        "Script contains showError",
+        "Script contains state-loading or skeleton",
+        "Script uses root_element.querySelector not document.getElementById",
+        "Chart data uses r.message or API response, not hardcoded arrays",
+        "get_list call has explicit limit",
+        "Workspace wiring sets label equal to chb_name"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "My custom HTML block 'program-tracker-chb' is showing blank in the workspace 'Program Management'. Help me debug it.",
+      "expected_output": "Systematic triage following the debug protocol: (1) run verify_chb_deployment check, (2) check label == custom_block_name in child table, (3) probe with minimal green-box test CHB, (4) check for document.getElementById usage, (5) check CDN usage. Should provide the verify_chb_deployment() function call or equivalent API calls.",
+      "assertions": [
+        "Mentions label == custom_block_name check",
+        "Mentions or provides verify_chb_deployment",
+        "Mentions shadow DOM / root_element",
+        "Provides a minimal probe CHB to isolate the issue",
+        "Mentions get_desktop_page API for verification"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Wire an existing CHB called 'csr-dashboard-chb' to an existing workspace called 'CSR Workspace'. The workspace already has content. Don't overwrite the existing blocks.",
+      "expected_output": "Script that: (1) GETs current workspace to preserve existing custom_blocks rows, (2) appends new CHB to content JSON blocks with unique id, (3) reuses existing child row name/idx if present, (4) PUTs both content + custom_blocks atomically, (5) verifies label sync via get_desktop_page.",
+      "assertions": [
+        "GETs existing workspace before PUT",
+        "Preserves existing content blocks (does not overwrite)",
+        "Sets label equal to chb_name in child table row",
+        "PUTs both content and custom_blocks in same request",
+        "Verifies with get_desktop_page after wiring"
+      ]
+    }
+  ]
+}
