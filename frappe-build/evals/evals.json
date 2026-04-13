@@ -1,0 +1,104 @@
+[
+  {
+    "skill_name": "frappe-v16-deployment",
+    "evals": [
+      {
+        "id": 1,
+        "prompt": "I want to deploy a dashboard with charts to our Frappe v16 instance. I do NOT have developer_mode on. It should show as a workspace tab. How should I deploy this?",
+        "expected_output": "Recommends Custom HTML Block (CHB) as the correct path \u2014 not Page (requires developer_mode) and not Web Page (loses desk context). Explains the CHB + Workspace approach, provides create_chb and wire_chb_to_workspace code. Mentions frappe.Chart for charts (no CDN). Should NOT attempt Page deployment.",
+        "assertions": [
+          "Recommends Custom HTML Block, not Page",
+          "Explains why Page requires developer_mode (filesystem storage)",
+          "Provides CHB creation code with html/style/script fields",
+          "Mentions frappe.Chart as chart option (no CDN dependency)",
+          "Includes workspace wiring with label == chb_name requirement",
+          "Does NOT suggest loading Chart.js from external CDN"
+        ]
+      },
+      {
+        "id": 2,
+        "prompt": "I deployed a Web Page dashboard to Frappe. It works fine in Chrome but shows blank in Safari. The charts never load. What's wrong?",
+        "expected_output": "Identifies CDN blocking by Safari Intelligent Tracking Prevention as the cause. Explains that cdnjs/jsdelivr/unpkg are blocked. Provides fix options: use frappe.Chart (if in desk context), inline Chart.js from npm, or use same-origin upload. Should also check whether the page has desk.bundle available (Web Page context doesn't load it natively).",
+        "assertions": [
+          "Identifies CDN blocking (Safari ITP) as primary suspect",
+          "Names specific blocked CDNs (cdnjs, jsdelivr, unpkg)",
+          "Provides concrete fix (inline library or frappe.Chart)",
+          "Mentions Web Page vs Desk Page bundle difference",
+          "Does not suggest just using a different CDN as the fix"
+        ]
+      },
+      {
+        "id": 3,
+        "prompt": "What's the right way to check if developer_mode is on for a Frappe instance via the API? And what deployment options do I have if it's off?",
+        "expected_output": "Provides the frappe.client.get_value or frappe.get_conf API call to check developer_mode. Then maps options for developer_mode OFF: Web Page (portal context, no frappe.Chart natively), Custom HTML Block (best for workspace dashboards), Client Script (for form/list augmentation). Decision tree logic applied.",
+        "assertions": [
+          "Provides API call to check developer_mode",
+          "Explains options when developer_mode is OFF",
+          "Recommends CHB for workspace dashboards",
+          "Explains Web Page loses desk context (no frappe.Chart/frappe.call natively)",
+          "References or applies decision tree logic"
+        ]
+      },
+      {
+        "id": 4,
+        "prompt": "I have a currency formatter and a status color helper that I want to use in both my CHB workspace dashboard and a Frappe Desk Page. My colleague wrote window.formatCurrency = function(){} in a shared file. Is that OK?",
+        "expected_output": "Flags window.* pattern as incorrect for shared Frappe logic. Explains issues: ESLint 'not defined' warnings, guard checks required everywhere, breaks across Web Page/Desk Page context boundaries. Recommends frappe.provide('myapp.utils') in a bundle file added to app_include_js in hooks.py. Provides working code showing frappe.provide declaration, function assignment, and usage in a CHB script. Mentions bench build requirement after adding bundle.",
+        "assertions": [
+          "Flags window.* pattern as problematic, not just suboptimal",
+          "Explains ESLint issues and guard check fragility",
+          "Recommends frappe.provide namespacing",
+          "Mentions app_include_js in hooks.py",
+          "Provides concrete frappe.provide code example",
+          "Mentions bench build after adding bundle file",
+          "Does NOT suggest the window.* approach is acceptable with modifications"
+        ]
+      }
+    ]
+  },
+  {
+    "skill_name": "frappe-custom-html-block",
+    "evals": [
+      {
+        "id": 1,
+        "prompt": "Build a CHB dashboard for a Frappe workspace called 'Grant Management' that shows: total applications, approved count, and a donut chart by status. Doctype is 'Grant Application' with fields name, status, amount. Wire it to the workspace.",
+        "expected_output": "Complete CHB with html/style/script fields. Script must: use CHB_CONFIG, use Promise.all + frappeCallPromise, have three-state HTML (loading/error/content), have explicit limit in get_list, render chart from API data not hardcoded values, use root_element.querySelector not document.getElementById, be wrapped in IIFE. Workspace wiring must set label == custom_block_name.",
+        "assertions": [
+          "Script is wrapped in (function() { ... })()",
+          "Script contains CHB_CONFIG",
+          "Script contains Promise.all",
+          "Script contains frappeCallPromise",
+          "Script contains showError",
+          "Script contains state-loading or skeleton",
+          "Script uses root_element.querySelector not document.getElementById",
+          "Chart data uses r.message or API response, not hardcoded arrays",
+          "get_list call has explicit limit",
+          "Workspace wiring sets label equal to chb_name"
+        ]
+      },
+      {
+        "id": 2,
+        "prompt": "My custom HTML block 'program-tracker-chb' is showing blank in the workspace 'Program Management'. Help me debug it.",
+        "expected_output": "Systematic triage following the debug protocol: (1) run verify_chb_deployment check, (2) check label == custom_block_name in child table, (3) probe with minimal green-box test CHB, (4) check for document.getElementById usage, (5) check CDN usage. Should provide the verify_chb_deployment() function call or equivalent API calls.",
+        "assertions": [
+          "Mentions label == custom_block_name check",
+          "Mentions or provides verify_chb_deployment",
+          "Mentions shadow DOM / root_element",
+          "Provides a minimal probe CHB to isolate the issue",
+          "Mentions get_desktop_page API for verification"
+        ]
+      },
+      {
+        "id": 3,
+        "prompt": "Wire an existing CHB called 'csr-dashboard-chb' to an existing workspace called 'CSR Workspace'. The workspace already has content. Don't overwrite the existing blocks.",
+        "expected_output": "Script that: (1) GETs current workspace to preserve existing custom_blocks rows, (2) appends new CHB to content JSON blocks with unique id, (3) reuses existing child row name/idx if present, (4) PUTs both content + custom_blocks atomically, (5) verifies label sync via get_desktop_page.",
+        "assertions": [
+          "GETs existing workspace before PUT",
+          "Preserves existing content blocks (does not overwrite)",
+          "Sets label equal to chb_name in child table row",
+          "PUTs both content and custom_blocks in same request",
+          "Verifies with get_desktop_page after wiring"
+        ]
+      }
+    ]
+  }
+]
