@@ -81,6 +81,38 @@ bench --site {site} build  # if assets changed
 
 > This record does NOT auto-link to the Workspace. Desktop Icons (Step 5) are the connector.
 
+#### Best Practices
+
+1. **Section Break must have:**
+   - `"child": 0`
+   - `"collapsible": 1` (for collapsible)
+   - `"type": "Section Break"`
+   - `"indent": 0`
+
+2. **Child Links must have:**
+   - `"child": 1`
+   - `"indent": 1` (or higher for nested)
+   - `"type": "Link"`
+
+3. **Default State:**
+   - `"keep_closed": 0` -> Open by default
+   - `"keep_closed": 1` -> Closed by default
+
+4. **Role-Based Section Break Visibility**
+   - `"display_depends_on": "frappe.user.has_role([\"Admin\", \"System Manager\"])"`
+
+5. **Performance Tips:**
+   - Limit items per section to 15-20 for better loading
+   - Use meaningful labels for user experience
+   - Group related items logically
+   - Test with different user roles
+
+6. **Common Pitfalls to Avoid:**
+   - Don't mix different indent levels in same section
+   - Ensure all child items have correct parent reference
+   - Avoid circular dependencies in routes
+   - Always clear cache after making changes
+
 ---
 
 ### Step 5: Create Desktop Icons — Two Required
