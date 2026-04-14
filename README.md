@@ -2,6 +2,10 @@
 
 AI agent skills for building, designing, and deploying on Frappe Framework v15/v16.
 
+## New — India drill-down map (State → District → Block)
+
+The `frappe-design` skill now ships with end-to-end guidance for an LGD-keyed India choropleth that drills from state → district → CD block inside a Frappe Custom HTML Block. Canonical TopoJSON for all three levels is bundled under `assets/india-admin-geo/` (36 states, 780 districts, 6,803 blocks), served gzipped via jsDelivr or copied into `apps/<app>/public/geo/` at install time. Design tokens, ColorBrewer scheme picker, hover-card field contract, and the Leaflet + topojson-client implementation pattern live in `frappe-design/REFERENCE.md` §6.6; deployment specifics (nginx gzip, verification script, failure modes) live in the `frappe-build` skill's "India Drill-down Map CHB" appendix. Drop-in CHB + API reference files are under `assets/india-admin-geo/reference/`.
+
 ## 3 Skills
 
 | Skill | Purpose | When to load |
