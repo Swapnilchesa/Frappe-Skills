@@ -562,67 +562,122 @@ For lead/conversion pipelines. Pure HTML, no library needed.
 
 ---
 
-### §6.6 — India Heatmap (TopoJSON + D3)
+### §6.6 — India Drill-down Map (State → District → Block)
 
-```html
-<div id="india-map-container" style="width:100%; height:480px; position:relative;">
-  <button id="back-to-india" style="display:none; position:absolute; top:12px; left:12px; z-index:10;">
-    ← Back to India
-  </button>
-  <svg id="india-map"></svg>
-</div>
-```
+**Canonical dataset:** LGD-keyed unified TopoJSON living in this repo at
+`assets/india-admin-geo/topo/{states,districts,blocks}.topojson`. 36 states, 780 districts, 6,803 CD blocks. Every block carries its full LGD parent chain (`state_lgd` → `district_lgd`) so drill-down is a single `.filter()`. See `assets/india-admin-geo/README.md` for schema, jsDelivr URLs, and provenance.
+
+**Two delivery modes:**
+- **Production (install-time copy, recommended):** `curl` the three files into `apps/<app>/<app>/public/geo/` and reference as `/assets/<app>/geo/states.topojson` etc. No runtime CDN dependency. Get the copy script from `assets/india-admin-geo/README.md`.
+- **Prototype (CDN):** reference directly from `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/…`. Pin `@v1.0.0` (or a commit SHA) for anything past demo.
+
+**Drop-in CHB code:** `assets/india-admin-geo/reference/custom_html_block.html`. Paste into a Custom HTML Block with placeholders filled — see Phase 1 below for what to ask the user.
+
+---
+
+#### Phase 1 — Clarify before generating code (always)
+
+Ask the user, one AskUserQuestion at a time:
+
+1. **Frappe app name** → decides `/assets/<app>/geo/` path.
+2. **Workspace** to embed in.
+3. **Grant/record DocType + fields:** state LGD field, district LGD field, block field, primary numeric metric, portfolio/programme field (optional), grantee field.
+4. **Metric aggregation:** sum | count | count_distinct | avg.
+5. **Metric format:** `inr_crore` | `inr_lakh` | `count` | `percent`.
+6. **Aspirational district source:** DocType + field, or static JSON.
+7. **ColorBrewer scheme** — pick from the picker below.
+8. **Hover card fields per level** — pick from the field menu below.
+9. **Delivery mode** — install-time copy (production) or CDN (prototype).
+
+Restate interpreted intent back before writing the CHB.
+
+---
+
+#### ColorBrewer scheme picker
+
+Always expose this as a dropdown at skill invocation — the choropleth scheme is a design decision, not a hard-coded default. All schemes below are baked into `reference/custom_html_block.html` as a `PALETTES` const; user picks by name.
+
+**Sequential (single-hue) — use for monotonic positive metrics (sanctioned, disbursed, beneficiaries, grantees):**
+`Reds` · `Blues` · `Greens` · `Purples` · `Oranges` · `Greys`
+
+**Sequential (multi-hue) — stronger visual range, same semantics:**
+`YlOrRd` · `YlOrBr` · `YlGn` · `YlGnBu` · `GnBu` · `BuGn` · `BuPu` · `PuBuGn` · `PuRd` · `RdPu` · `OrRd`
+
+**Diverging — use for signed / above-vs-below metrics (budget variance, % vs target, YoY change):**
+`RdYlGn` · `RdYlBu` · `RdBu` · `PiYG` · `PRGn` · `PuOr` · `BrBG` · `Spectral`
+
+**Qualitative (categorical) — use only for "dominant category" maps (e.g. dominant theme per district), never for numeric choropleths:**
+`Set2` · `Set3` · `Pastel1` · `Dark2` · `Accent`
+
+**Default nudge:** positive metric → `Reds` (mGrant baseline). Signed metric → `RdYlGn`. Categorical map → `Set2`. Override if the user has a stronger preference. Never use diverging on a pure positive metric — it manufactures a fake midpoint and misleads the eye.
+
+---
+
+#### Hover card field picker
+
+The right-side info card and hover tooltip show whatever the user picks at each level. Ask separately for country / state / district levels. Each field is `{key, label, format}`:
+
+- `format` ∈ `currency` | `inr_lakh` | `count` | `number` | `percent` | `text` | `badge` | `chips`
+- `chips` renders categorical portfolio pills (colours from the categorical palette in §2.2).
+- `badge` renders a flag (e.g. Aspirational star) — use with a boolean field.
+
+**Typical menus — use these as starting suggestions:**
+
+| Level | Field keys to offer |
+|---|---|
+| Country (state hover) | `metric` (Sanctioned / ₹), `disbursed`, `grants_count`, `grantees` (count distinct), `themes` (chips), `aspirational_count` |
+| State (district hover) | `metric`, `disbursed`, `grantees`, `portfolios` (chips), `block_count`, `aspirational` (badge), `last_disbursed_on` |
+| District (block hover) | `metric`, `grantees`, `portfolios` (chips), `aspirational` (badge), `lead_partner`, `last_disbursed_on` |
+
+Whatever the user picks flows into the `HOVER_FIELDS` placeholder of `custom_html_block.html` **and** becomes the contract for the `map_metrics` API (see `reference/api.py`) — the method must return exactly those keys per row.
+
+Default choice if user is unsure: `[{key:"metric",label:"<Metric label>",format:"currency"},{key:"grantees",label:"Grantees",format:"count"},{key:"portfolios",label:"Themes",format:"chips"},{key:"aspirational",label:"Aspirational",format:"badge"}]` at every level.
+
+---
+
+#### Design tokens (level-specific)
+
+| Level | Fill | Stroke | Hover |
+|---|---|---|---|
+| States | Chosen ramp by metric | `#1f2937` 1px | `#dc2626` 2px |
+| Districts | Chosen ramp by metric | `#374151` 0.8px | `#dc2626` 2px |
+| Blocks | Muted `#d1d5db` 0.25 opacity | `#9ca3af` 0.4px | `#ef4444` 0.45 fill |
+
+Blocks are intentionally de-emphasised — user is inside district context, the hover card and chips carry the information.
+
+Other chrome: header `#111827` band, info card `#ffffff` + 1px `#e5e7eb` + 10px radius + `0 1px 2px rgba(0,0,0,.03)` shadow. Typography per §3. Numbers via `Intl.NumberFormat("en-IN")` + Cr/L post-processing (see §4).
+
+---
+
+#### Legend
+
+Horizontal, 5 stops, bottom-left of map. Renders the picked ColorBrewer ramp. Label min/max with formatted metric. Hidden at block level. See `renderLegendBar()` in `custom_html_block.html`.
+
+---
+
+#### Portfolio chips (categorical)
+
+Baked mapping (override with a `PORTFOLIO_COLOURS` prop if the user has their own taxonomy):
 
 ```js
-// CDN deps (add to <head>):
-// <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-// <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
-// TopoJSON source: https://raw.githubusercontent.com/deldersveld/topojson/master/countries/india/india-states.json
-
-async function renderIndiaMap(container, data) {
-  const svg = d3.select('#india-map');
-  const { width, height } = container.getBoundingClientRect();
-  svg.attr('width', width).attr('height', height);
-
-  const projection = d3.geoMercator();
-  const path = d3.geoPath().projection(projection);
-
-  const topo = await d3.json(INDIA_TOPO_URL);
-  const states = topojson.feature(topo, topo.objects.states);
-
-  // CRITICAL: fitBounds so map fills container — never skip this
-  projection.fitSize([width, height], states);
-
-  // ColorBrewer YlOrRd sequential for choropleth
-  const colorScale = d3.scaleQuantize()
-    .domain([0, d3.max(Object.values(data))])
-    .range(['#FFFFCC','#FFEDA0','#FED976','#FEB24C','#FD8D3C','#FC4E2A','#E31A1C','#BD0026','#800026']);
-
-  svg.selectAll('path')
-    .data(states.features)
-    .join('path')
-      .attr('d', path)
-      .attr('fill', d => colorScale(data[d.properties.NAME_1] || 0))
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 0.5)
-      .on('click', (event, d) => drillDown(d.properties.NAME_1))
-      .append('title')
-        .text(d => `${d.properties.NAME_1}: ${formatIN(data[d.properties.NAME_1] || 0)}`);
-}
-
-// Drill-down: on state click, load district-level data
-function drillDown(stateName) {
-  document.getElementById('back-to-india').style.display = 'block';
-  // Load district TopoJSON for stateName and re-render
-}
-
-document.getElementById('back-to-india').onclick = () => {
-  document.getElementById('back-to-india').style.display = 'none';
-  renderIndiaMap(/* top-level data */);
+const PORTFOLIO = {
+  "Education":"#3b82f6","Rural Upliftment":"#f97316","Nutrition":"#fb923c",
+  "Water & Sanitation":"#14b8a6","Health":"#22c55e","Arts & Culture":"#ec4899",
+  "Livelihood":"#8b5cf6","Skill Development":"#eab308","_default":"#6b7280"
 };
 ```
 
 ---
+
+#### Implementation contract (do not deviate)
+
+- **Never key on `state_name`** (Unicode vs ASCII mismatch — `Bihār` vs `bihar`). Always `state_lgd` (zero-padded string).
+- Use **Leaflet + topojson-client** (not D3) — handles 6,800 block polygons on canvas without DOM blow-up. `preferCanvas: true`.
+- **No `localStorage` / `sessionStorage`** — Frappe Desk strips. Use in-memory cache keyed on LGD.
+- Basemap: CARTO light (no token). One level of zoom control.
+- `frappe.call` to `<app>.api.map_metrics` per level, whitelisted. Returns `[{key, metric, <user-picked fields>, portfolios:[{name,count}], aspirational}]`. See `assets/india-admin-geo/reference/api.py`.
+- **Preet Vihar (Delhi) block:** `district_lgd` is null. Either override to `0174` (East Delhi) or filter out — flag to user in Phase 1.
+- **Shadow DOM:** see frappe-build §6 for label-matching and `frappe.create_shadow_element` contract. Script tags inject inside the block, not parent document.
 
 ## §7 — Top Tab Bar
 

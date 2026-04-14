@@ -1,0 +1,313 @@
+<!--
+  mGrant-style India drill-down map — Frappe Custom HTML Block
+  Repo:   https://github.com/Swapnilchesa/Frappe-Skills
+  Assets: /assets/<app>/geo/{states,districts,blocks}.topojson  (install-time copy, recommended)
+     or   https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo  (prototype only)
+
+  REPLACE PLACEHOLDERS (filled at skill invocation time):
+    __APP_NAME__         e.g. mgrant
+    __API_METHOD__       e.g. mgrant.api.map_metrics
+    __METRIC_LABEL__     e.g. "Sanctioned"
+    __METRIC_FORMAT__    inr_crore | inr_lakh | count | percent
+    __SCHEME__           ColorBrewer scheme name (see palettes below) — e.g. "Reds"
+    __GEO_BASE__         "/assets/__APP_NAME__/geo"  OR  the jsDelivr URL
+    __HOVER_FIELDS__     JSON {country:[{key,label,format}], state:[...], district:[...]}
+-->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  .mg-map-wrap { font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif; color:#111827; background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; }
+  .mg-map-head { padding:12px 16px; background:#111827; color:#fff; display:flex; align-items:center; gap:12px; }
+  .mg-map-head h3 { margin:0; font-size:13px; font-weight:600; letter-spacing:-0.01em; }
+  .mg-map-head .sub { font-size:12px; opacity:.65; }
+  .mg-crumb { margin-left:auto; font-size:12px; display:flex; gap:6px; align-items:center; }
+  .mg-crumb a { color:#60a5fa; cursor:pointer; text-decoration:none; }
+  .mg-crumb a:hover { color:#93c5fd; text-decoration:underline; }
+  .mg-crumb .sep { opacity:.4; }
+  .mg-toggle { display:flex; gap:0; background:#1f2937; border-radius:999px; padding:2px; }
+  .mg-toggle button { background:transparent; color:#9ca3af; border:0; padding:4px 12px; border-radius:999px; font-size:11px; cursor:pointer; }
+  .mg-toggle button.active { background:#fff; color:#111827; font-weight:600; }
+  .mg-shell { display:grid; grid-template-columns: 1fr 320px; gap:12px; padding:12px; height:620px; }
+  .mg-map { background:#fff; border:1px solid #e5e7eb; border-radius:10px; position:relative; }
+  .mg-legend { position:absolute; left:12px; bottom:12px; background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px; font-size:11px; box-shadow:0 1px 2px rgba(0,0,0,.03); z-index:400; }
+  .mg-legend .lbl { color:#111827; font-weight:600; margin-bottom:4px; }
+  .mg-legend .bar { display:flex; height:8px; border-radius:2px; overflow:hidden; margin:4px 0; width:160px; }
+  .mg-legend .bar span { flex:1; }
+  .mg-legend .ends { display:flex; justify-content:space-between; color:#6b7280; font-variant-numeric:tabular-nums; }
+  .mg-side { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:14px; overflow-y:auto; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+  .mg-side h4 { margin:0 0 4px; font-size:13px; font-weight:600; }
+  .mg-side .meta { color:#6b7280; font-size:11px; margin-bottom:12px; }
+  .mg-kpi { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+  .mg-kpi .cell { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px; }
+  .mg-kpi .cell .k { font-size:10px; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; }
+  .mg-kpi .cell .v { font-size:15px; font-weight:600; color:#111827; font-variant-numeric:tabular-nums; }
+  .mg-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+  .mg-chip { font-size:11px; padding:3px 10px; border-radius:999px; color:#fff; font-weight:500; }
+  .mg-aspir { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:#92400e; background:#fef3c7; padding:3px 8px; border-radius:999px; }
+</style>
+
+<div class="mg-map-wrap">
+  <div class="mg-map-head">
+    <h3>Grants Coverage · __METRIC_LABEL__</h3>
+    <span class="sub">State → District → Block</span>
+    <div class="mg-toggle" id="mgToggle">
+      <button data-level="country" class="active">States</button>
+      <button data-level="state">Districts</button>
+    </div>
+    <nav class="mg-crumb" id="mgCrumb"></nav>
+  </div>
+  <div class="mg-shell">
+    <div class="mg-map" id="mgMap">
+      <div class="mg-legend" id="mgLegend" style="display:none">
+        <div class="lbl">__METRIC_LABEL__</div>
+        <div class="bar" id="mgLegendBar"></div>
+        <div class="ends"><span id="mgLegendMin">—</span><span id="mgLegendMax">—</span></div>
+      </div>
+    </div>
+    <aside class="mg-side" id="mgSide">
+      <h4 id="mgSideTitle">India</h4>
+      <div class="meta" id="mgSideMeta">Click any state to drill in.</div>
+      <div class="mg-kpi" id="mgKpi"></div>
+      <div class="mg-chips" id="mgChips"></div>
+    </aside>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+<script>
+(function(){
+  const API           = "__API_METHOD__";
+  const METRIC_LABEL  = "__METRIC_LABEL__";
+  const METRIC_FORMAT = "__METRIC_FORMAT__";
+  const GEO           = "__GEO_BASE__";
+  const SCHEME        = "__SCHEME__";
+  const HOVER_FIELDS  = __HOVER_FIELDS__;
+
+  const PALETTES = {
+    Reds:    ["#fee5d9","#fcae91","#fb6a4a","#de2d26","#a50f15"],
+    Blues:   ["#eff3ff","#bdd7e7","#6baed6","#3182bd","#08519c"],
+    Greens:  ["#edf8e9","#bae4b3","#74c476","#31a354","#006d2c"],
+    Purples: ["#f2f0f7","#cbc9e2","#9e9ac8","#756bb1","#54278f"],
+    Oranges: ["#feedde","#fdbe85","#fd8d3c","#e6550d","#a63603"],
+    Greys:   ["#f7f7f7","#cccccc","#969696","#636363","#252525"],
+    YlOrRd:  ["#ffffb2","#fecc5c","#fd8d3c","#f03b20","#bd0026"],
+    YlOrBr:  ["#ffffd4","#fed98e","#fe9929","#d95f0e","#993404"],
+    YlGn:    ["#ffffcc","#c2e699","#78c679","#31a354","#006837"],
+    YlGnBu:  ["#ffffcc","#a1dab4","#41b6c4","#2c7fb8","#253494"],
+    GnBu:    ["#f0f9e8","#bae4bc","#7bccc4","#43a2ca","#0868ac"],
+    BuGn:    ["#edf8fb","#b2e2e2","#66c2a4","#2ca25f","#006d2c"],
+    BuPu:    ["#edf8fb","#b3cde3","#8c96c6","#8856a7","#810f7c"],
+    PuBuGn:  ["#f6eff7","#bdc9e1","#67a9cf","#1c9099","#016c59"],
+    PuRd:    ["#f1eef6","#d7b5d8","#df65b0","#dd1c77","#980043"],
+    RdPu:    ["#feebe2","#fbb4b9","#f768a1","#c51b8a","#7a0177"],
+    OrRd:    ["#fef0d9","#fdcc8a","#fc8d59","#e34a33","#b30000"],
+    RdYlGn:  ["#d7191c","#fdae61","#ffffbf","#a6d96a","#1a9641"],
+    RdYlBu:  ["#d7191c","#fdae61","#ffffbf","#abd9e9","#2c7bb6"],
+    RdBu:    ["#ca0020","#f4a582","#f7f7f7","#92c5de","#0571b0"],
+    PiYG:    ["#d01c8b","#f1b6da","#f7f7f7","#b8e186","#4dac26"],
+    PRGn:    ["#7b3294","#c2a5cf","#f7f7f7","#a6dba0","#008837"],
+    PuOr:    ["#e66101","#fdb863","#f7f7f7","#b2abd2","#5e3c99"],
+    BrBG:    ["#a6611a","#dfc27d","#f5f5f5","#80cdc1","#018571"],
+    Spectral:["#d7191c","#fdae61","#ffffbf","#abd9e9","#2c7bb6"]
+  };
+  const RAMP = PALETTES[SCHEME] || PALETTES.Reds;
+
+  const PORTFOLIO = {
+    "Education":"#3b82f6","Rural Upliftment":"#f97316","Nutrition":"#fb923c",
+    "Water & Sanitation":"#14b8a6","Health":"#22c55e","Arts & Culture":"#ec4899",
+    "Livelihood":"#8b5cf6","Skill Development":"#eab308","_default":"#6b7280"
+  };
+
+  const fmtIN = new Intl.NumberFormat("en-IN");
+  function fmt(v, format){
+    if (v == null || v === "") return "—";
+    if (format === "currency" || METRIC_FORMAT === "inr_crore") return "₹" + (Number(v)/1e7).toFixed(Number(v)>=1e8?0:2) + " Cr";
+    if (format === "inr_lakh" || METRIC_FORMAT === "inr_lakh") return "₹" + (Number(v)/1e5).toFixed(Number(v)>=1e6?0:1) + " L";
+    if (format === "percent" || METRIC_FORMAT === "percent")  return Number(v).toFixed(1) + "%";
+    if (format === "count" || format === "number")            return fmtIN.format(Number(v));
+    return String(v);
+  }
+
+  function quantiles(values, n){
+    const s = values.filter(v=>v!=null && !isNaN(v)).sort((a,b)=>a-b);
+    if (!s.length) return [0,0,0,0];
+    const q = [];
+    for (let i=1;i<n;i++) q.push(s[Math.floor(s.length*i/n)]);
+    return q;
+  }
+  function colorFor(v, breaks){
+    if (v == null) return "#f3f4f6";
+    for (let i=0;i<breaks.length;i++) if (v <= breaks[i]) return RAMP[i];
+    return RAMP[RAMP.length-1];
+  }
+  function renderLegendBar(){
+    document.getElementById("mgLegendBar").innerHTML =
+      RAMP.map(c => `<span style="background:${c}"></span>`).join("");
+  }
+
+  const mapEl = document.getElementById("mgMap");
+  const map = L.map(mapEl, { preferCanvas:true, zoomControl:true }).setView([22.5, 80], 5);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    { attribution:"© OSM · © CARTO", subdomains:"abcd", maxZoom:14 }).addTo(map);
+
+  const cache = { states:null, districts:null, blocks:null, metrics:{} };
+  let currentLayer = null;
+  let pathStack = [{label:"India", level:"country"}];
+
+  async function loadTopo(name){
+    if (cache[name]) return cache[name];
+    const r = await fetch(`${GEO}/${name}.topojson`);
+    const t = await r.json();
+    cache[name] = topojson.feature(t, t.objects[name]);
+    return cache[name];
+  }
+
+  async function getMetrics(level, args){
+    args = args || {};
+    const key = level + ":" + JSON.stringify(args);
+    if (cache.metrics[key]) return cache.metrics[key];
+    const r = await frappe.call({ method: API, args: Object.assign({level}, args) });
+    const byKey = {};
+    (r.message||[]).forEach(row => { byKey[row.key] = row; });
+    cache.metrics[key] = byKey;
+    return byKey;
+  }
+
+  function renderCrumb(){
+    const el = document.getElementById("mgCrumb");
+    el.innerHTML = pathStack.map((p,i)=>
+      `${i?'<span class="sep">›</span>':""}<a data-i="${i}">${p.label}</a>`
+    ).join("");
+    el.querySelectorAll("a").forEach(a => a.onclick = ()=> navigateTo(+a.dataset.i));
+  }
+
+  function renderHoverCard(level, featureProps, row){
+    const fields = HOVER_FIELDS[level] || [];
+    const title = featureProps[level==="country"?"state_name":(level==="state"?"district_name":"block_name")] || "—";
+    document.getElementById("mgSideTitle").textContent = title;
+
+    const lgd = level==="country" ? `state_lgd ${featureProps.state_lgd}` :
+                level==="state"   ? `district_lgd ${featureProps.district_lgd}` :
+                                    `block · ${featureProps.district_name}`;
+    const aspir = row && row.aspirational ? ' <span class="mg-aspir">★ Aspirational</span>' : "";
+    document.getElementById("mgSideMeta").innerHTML = lgd + aspir;
+
+    const kpiHTML = fields.filter(f => f.format !== "chips" && f.format !== "badge").map(f => {
+      const v = row ? row[f.key] : null;
+      return `<div class="cell"><div class="k">${f.label}</div><div class="v">${fmt(v, f.format)}</div></div>`;
+    }).join("");
+    document.getElementById("mgKpi").innerHTML = kpiHTML;
+
+    const chipField = fields.find(f => f.format === "chips");
+    const chips = (row && chipField) ? (row[chipField.key] || []) : [];
+    document.getElementById("mgChips").innerHTML = chips.map(c =>
+      `<span class="mg-chip" style="background:${PORTFOLIO[c.name]||PORTFOLIO._default}">${c.name}${c.count!=null?` · ${c.count}`:""}</span>`
+    ).join("");
+  }
+
+  function setLegend(breaks){
+    const el = document.getElementById("mgLegend");
+    if (!breaks){ el.style.display="none"; return; }
+    el.style.display="block";
+    renderLegendBar();
+    document.getElementById("mgLegendMin").textContent = fmt(breaks[0], "currency");
+    document.getElementById("mgLegendMax").textContent = fmt(breaks[breaks.length-1], "currency");
+  }
+
+  function navigateTo(i){
+    pathStack = pathStack.slice(0, i+1);
+    const last = pathStack[pathStack.length-1];
+    if (last.level === "country") goCountry();
+    else if (last.level === "state") goState(last.state_lgd, last.label);
+  }
+
+  async function goCountry(){
+    pathStack = [{label:"India", level:"country"}];
+    if (currentLayer) map.removeLayer(currentLayer);
+    const fc = await loadTopo("states");
+    const metrics = await getMetrics("country");
+    const values = fc.features.map(f => (metrics[f.properties.state_lgd]||{}).metric);
+    const breaks = quantiles(values, 5);
+    currentLayer = L.geoJSON(fc, {
+      style: f => ({
+        color:"#1f2937", weight:1,
+        fillColor: colorFor((metrics[f.properties.state_lgd]||{}).metric, breaks),
+        fillOpacity: 0.85
+      }),
+      onEachFeature:(f,l)=>{
+        l.on("mouseover", e=>{ e.target.setStyle({color:"#dc2626", weight:2}); renderHoverCard("country", f.properties, metrics[f.properties.state_lgd]); });
+        l.on("mouseout",  e=> e.target.setStyle({color:"#1f2937", weight:1}));
+        l.on("click", ()=> goState(f.properties.state_lgd, f.properties.state_name));
+      }
+    }).addTo(map);
+    map.fitBounds([[6,68],[36,97]]);
+    setLegend(breaks);
+    renderCrumb();
+    setToggle("country");
+  }
+
+  async function goState(state_lgd, state_name){
+    pathStack = [{label:"India", level:"country"}, {label:state_name, level:"state", state_lgd}];
+    if (currentLayer) map.removeLayer(currentLayer);
+    const fc = await loadTopo("districts");
+    const filtered = { type:"FeatureCollection", features: fc.features.filter(x=>x.properties.state_lgd===state_lgd) };
+    const metrics = await getMetrics("state", {state_lgd});
+    const values = filtered.features.map(f=>(metrics[f.properties.district_lgd]||{}).metric);
+    const breaks = quantiles(values, 5);
+    currentLayer = L.geoJSON(filtered, {
+      style: f => ({
+        color:"#374151", weight:0.8,
+        fillColor: colorFor((metrics[f.properties.district_lgd]||{}).metric, breaks),
+        fillOpacity: 0.85
+      }),
+      onEachFeature:(f,l)=>{
+        l.on("mouseover", e=>{ e.target.setStyle({color:"#dc2626", weight:2}); renderHoverCard("state", f.properties, metrics[f.properties.district_lgd]); });
+        l.on("mouseout",  e=> e.target.setStyle({color:"#374151", weight:0.8}));
+        l.on("click", ()=> goDistrict(state_lgd, state_name, f.properties.district_lgd, f.properties.district_name));
+      }
+    }).addTo(map);
+    try{ map.fitBounds(currentLayer.getBounds(), {padding:[20,20]}); }catch(e){}
+    setLegend(breaks);
+    renderCrumb();
+    setToggle("state");
+  }
+
+  async function goDistrict(state_lgd, state_name, district_lgd, district_name){
+    pathStack = [
+      {label:"India", level:"country"},
+      {label:state_name, level:"state", state_lgd},
+      {label:district_name, level:"district", district_lgd}
+    ];
+    if (currentLayer) map.removeLayer(currentLayer);
+    const fc = await loadTopo("blocks");
+    const filtered = { type:"FeatureCollection", features: fc.features.filter(x=>x.properties.district_lgd===district_lgd) };
+    const metrics = await getMetrics("district", {state_lgd, district_lgd});
+    currentLayer = L.geoJSON(filtered, {
+      style: () => ({ color:"#9ca3af", weight:0.4, fillColor:"#d1d5db", fillOpacity:0.25 }),
+      onEachFeature:(f,l)=>{
+        l.on("mouseover", e=>{ e.target.setStyle({color:"#dc2626", weight:2, fillColor:"#ef4444", fillOpacity:0.45}); renderHoverCard("district", f.properties, metrics[f.properties.block_shape_id]); });
+        l.on("mouseout",  e=> e.target.setStyle({color:"#9ca3af", weight:0.4, fillColor:"#d1d5db", fillOpacity:0.25}));
+      }
+    }).addTo(map);
+    try{ map.fitBounds(currentLayer.getBounds(), {padding:[20,20]}); }catch(e){}
+    setLegend(null);
+    renderCrumb();
+    setToggle("district");
+  }
+
+  function setToggle(level){
+    document.querySelectorAll("#mgToggle button").forEach(b=>{
+      b.classList.toggle("active",
+        (level==="country" && b.dataset.level==="country") ||
+        ((level==="state"||level==="district") && b.dataset.level==="state"));
+    });
+  }
+  document.getElementById("mgToggle").addEventListener("click", e=>{
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.level === "country") goCountry();
+    else if (pathStack.length>1) navigateTo(1);
+  });
+
+  goCountry();
+})();
+</script>

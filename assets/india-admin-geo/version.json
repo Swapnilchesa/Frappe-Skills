@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0",
+  "as_of": "2026-04",
+  "lgd_refresh": "2025-02",
+  "feature_counts": {
+    "states": 36,
+    "districts": 780,
+    "blocks": 6803
+  },
+  "sizes_bytes": {
+    "states.topojson": 202762,
+    "districts.topojson": 1696220,
+    "blocks.topojson": 5724029
+  },
+  "schema": {
+    "states": ["state_name", "state_lgd"],
+    "districts": ["state_name", "state_lgd", "district_name", "district_lgd"],
+    "blocks": ["block_name", "block_shape_id", "state_name", "state_lgd", "district_name", "district_lgd"]
+  },
+  "object_names": {
+    "states": "topo.objects.states",
+    "districts": "topo.objects.districts",
+    "blocks": "topo.objects.blocks"
+  },
+  "known_gaps": [
+    "Delhi Preet Vihar block: district_lgd null (parent 'Nazul' has no LGD)"
+  ]
+}

@@ -26,35 +26,35 @@ description: >
 
 ## Table of Contents
 
-1. [Frappe Page Architecture â€” How It Actually Works](#1-frappe-page-architecture)
+1. [Frappe Page Architecture — How It Actually Works](#1-frappe-page-architecture)
 2. [The developer_mode Gate](#2-the-developer_mode-gate)
 3. [Four Deployment Targets Compared](#3-four-deployment-targets)
 4. [JS Bundle Availability by Context](#4-js-bundle-availability)
 5. [Workspace Content JSON Structure](#5-workspace-content-json)
-6. [Custom HTML Block â€” Correct Usage](#6-custom-html-block)
-7. [Web Page â€” Limitations and Workarounds](#7-web-page)
+6. [Custom HTML Block — Correct Usage](#6-custom-html-block)
+7. [Web Page — Limitations and Workarounds](#7-web-page)
 8. [CDN and External Script Restrictions](#8-cdn-restrictions)
 9. [Sidebar and Navigation in v16](#9-sidebar-and-navigation)
 10. [Bundle Hash Discovery](#10-bundle-hash-discovery)
 11. [iframe Embedding Pitfalls](#11-iframe-embedding)
 12. [Custom Workspace Themes (e.g., SVA)](#12-custom-workspace-themes)
 13. [Server Script Limitations](#13-server-script-limitations)
-14. [API Field Names â€” What's Real vs Virtual](#14-api-field-names)
-15. [Decision Tree â€” Which Deployment Path?](#15-decision-tree)
+14. [API Field Names — What's Real vs Virtual](#14-api-field-names)
+15. [Decision Tree — Which Deployment Path?](#15-decision-tree)
 16. [Pre-Flight Checklist](#16-pre-flight-checklist)
 17. [Working Code Templates](#17-working-code-templates)
-18. [Client Script Deployment â€" Form and List View](#18-client-script-deployment)
+18. [Client Script Deployment — Form and List View](#18-client-script-deployment)
 19. [Cache Invalidation](#19-cache-invalidation)
-20. [Platform Order â€" Greenfield Build Sequence](#20-platform-order)
+20. [Platform Order — Greenfield Build Sequence](#20-platform-order)
 
-**Part B â€" Custom HTML Blocks (Deep Reference)**
+**Part B — Custom HTML Blocks (Deep Reference)**
 
-21. [How CHBs Render â€" Shadow DOM](#1-shadow-dom)
+21. [How CHBs Render — Shadow DOM](#1-shadow-dom)
 22. [The Critical Label-Match Rule](#2-label-match)
-23. [DOM Querying â€" What Works vs What Fails](#3-dom-querying)
+23. [DOM Querying — What Works vs What Fails](#3-dom-querying)
 24. [Three-Field Split](#4-three-fields)
-25. [Workspace Wiring â€" content JSON + child table sync](#5-workspace-wiring)
-26. [Chart Libraries â€" CDN Will Fail](#6-charts)
+25. [Workspace Wiring — content JSON + child table sync](#5-workspace-wiring)
+26. [Chart Libraries — CDN Will Fail](#6-charts)
 27. [page_data Discovery](#7-page-data)
 28. [CHB Pre-Flight Checklist](#8-checklist)
 29. [CHB Debugging Protocol](#9-debug)
@@ -62,28 +62,28 @@ description: >
 
 ---
 
-## 1. Frappe Page Architecture â€” How It Actually Works {#1-frappe-page-architecture}
+## 1. Frappe Page Architecture — How It Actually Works {#1-frappe-page-architecture}
 
 ### âŒ WRONG ASSUMPTION (Claude kept making this error)
 
-> "I'll create a Page via API and set the `script` and `style` fields â€” they'll persist in the database."
+> "I'll create a Page via API and set the `script` and `style` fields — they'll persist in the database."
 
-### âœ… REALITY
+### ✅ REALITY
 
 The **Page doctype** in Frappe stores `script`, `style`, and `content` fields **on the filesystem**, NOT in the database.
 
 ```
 apps/<app_name>/<app_name>/<module>/page/<page_name>/
-â”œâ”€â”€ <page_name>.json     # Page metadata (stored in DB + exported to file)
-â”œâ”€â”€ <page_name>.js       # JavaScript (FILESYSTEM ONLY)
-â”œâ”€â”€ <page_name>.css      # Styles (FILESYSTEM ONLY)
-â””â”€â”€ <page_name>.html     # HTML template (FILESYSTEM ONLY)
+├── <page_name>.json     # Page metadata (stored in DB + exported to file)
+├── <page_name>.js       # JavaScript (FILESYSTEM ONLY)
+├── <page_name>.css      # Styles (FILESYSTEM ONLY)
+└── <page_name>.html     # HTML template (FILESYSTEM ONLY)
 ```
 
 **Key behaviors:**
-- When you call `frappe.db.set_value('Page', 'my-page', 'script', js_code)`, it does NOT create a DB column â€” the `script` field is a **virtual property** loaded from the `.js` file.
-- The Page API's `as_dict()` method includes `script`, `style`, `content` by reading from the filesystem â€” but you CANNOT write to them via the API unless `developer_mode` is ON and the page belongs to a custom app.
-- Without `developer_mode`, the API will accept the POST/PUT silently but the values won't persist â€” the page will be **blank**.
+- When you call `frappe.db.set_value('Page', 'my-page', 'script', js_code)`, it does NOT create a DB column — the `script` field is a **virtual property** loaded from the `.js` file.
+- The Page API's `as_dict()` method includes `script`, `style`, `content` by reading from the filesystem — but you CANNOT write to them via the API unless `developer_mode` is ON and the page belongs to a custom app.
+- Without `developer_mode`, the API will accept the POST/PUT silently but the values won't persist — the page will be **blank**.
 
 ### Source Code Proof
 
@@ -112,15 +112,15 @@ def on_trash(self):
 
 | Action | developer_mode ON | developer_mode OFF |
 |--------|:-:|:-:|
-| Create Page with JS/CSS that persists | âœ… | âŒ Blank page |
-| Create non-custom DocType | âœ… | âŒ |
-| Delete standard Pages | âœ… | âŒ |
-| Export module JSON | âœ… | âŒ |
-| Create Web Page via API | âœ… | âœ… |
-| Create Custom HTML Block via API | âœ… | âœ… |
-| Create Workspace via API | âœ… | âœ… |
-| Create Server Script via API | âœ… | âœ… |
-| `frappe.call()` works in Desk context | âœ… | âœ… |
+| Create Page with JS/CSS that persists | ✅ | âŒ Blank page |
+| Create non-custom DocType | ✅ | âŒ |
+| Delete standard Pages | ✅ | âŒ |
+| Export module JSON | ✅ | âŒ |
+| Create Web Page via API | ✅ | ✅ |
+| Create Custom HTML Block via API | ✅ | ✅ |
+| Create Workspace via API | ✅ | ✅ |
+| Create Server Script via API | ✅ | ✅ |
+| `frappe.call()` works in Desk context | ✅ | ✅ |
 
 ### How to Check
 
@@ -145,16 +145,16 @@ resp = requests.get(f"{BASE}/api/method/frappe.get_conf",
 
 | Feature | **Page** (Desk) | **Web Page** (Portal) | **Custom HTML Block** (Workspace) | **Client Script** |
 |---------|:-:|:-:|:-:|:-:|
-| Requires developer_mode | âœ… YES | âŒ No | âŒ No | âŒ No |
-| Runs inside Frappe Desk | âœ… Full desk context | âŒ Portal context | âœ… Inside workspace | âœ… On form/list |
-| Has jQuery | âœ… | âŒ Only if desk bundle loaded | âœ… | âœ… |
-| Has `frappe.call()` | âœ… | âŒ Not natively | âœ… | âœ… |
-| Has `frappe.Chart` | âœ… | âŒ Not natively | âœ… | âœ… |
-| Has Frappe sidebar | âœ… | âŒ | âœ… Workspace sidebar | âœ… |
-| Supports inline `<script>` | âœ… | âš ï¸ Depends on version | âš ï¸ Depends on theme | N/A |
+| Requires developer_mode | ✅ YES | âŒ No | âŒ No | âŒ No |
+| Runs inside Frappe Desk | ✅ Full desk context | âŒ Portal context | ✅ Inside workspace | ✅ On form/list |
+| Has jQuery | ✅ | âŒ Only if desk bundle loaded | ✅ | ✅ |
+| Has `frappe.call()` | ✅ | âŒ Not natively | ✅ | ✅ |
+| Has `frappe.Chart` | ✅ | âŒ Not natively | ✅ | ✅ |
+| Has Frappe sidebar | ✅ | âŒ | ✅ Workspace sidebar | ✅ |
+| Supports inline `<script>` | ✅ | ⚠️ Depends on version | ⚠️ Depends on theme | N/A |
 | URL pattern | `/app/<page-name>` | `/<route>` | `/app/<workspace-name>` | N/A |
 | Max content size | Unlimited (filesystem) | ~5MB (DB field) | ~2MB (DB field) | ~64KB |
-| Deployment via API (no SSH) | âŒ Without dev mode | âœ… | âœ… | âœ… |
+| Deployment via API (no SSH) | âŒ Without dev mode | ✅ | ✅ | ✅ |
 
 ### When to Use Each
 
@@ -171,15 +171,15 @@ resp = requests.get(f"{BASE}/api/method/frappe.get_conf",
 
 > "Web Pages have jQuery and frappe.Chart available since they're served from the same Frappe instance."
 
-### âœ… REALITY
+### ✅ REALITY
 
 Frappe loads DIFFERENT JavaScript bundles depending on the page context:
 
 | Bundle | Desk Pages (`/app/*`) | Web Pages (`/route`) | What It Contains |
 |--------|:-:|:-:|---|
-| `libs.bundle.js` | âœ… | âœ… | jQuery, Moment.js, Socket.io client |
-| `desk.bundle.js` | âœ… | âŒ | `frappe.call()`, `frappe.Chart`, `frappe.ui.*`, full Frappe desk framework |
-| `frappe-web.bundle.js` | âŒ | âœ… | Minimal web context (no Chart, no desk UI) |
+| `libs.bundle.js` | ✅ | ✅ | jQuery, Moment.js, Socket.io client |
+| `desk.bundle.js` | ✅ | âŒ | `frappe.call()`, `frappe.Chart`, `frappe.ui.*`, full Frappe desk framework |
+| `frappe-web.bundle.js` | âŒ | ✅ | Minimal web context (no Chart, no desk UI) |
 | `report.bundle.js` | Only on reports | âŒ | Report-specific frappe UI |
 | `form.bundle.js` | Only on forms | âŒ | Form-specific frappe UI |
 
@@ -197,7 +197,7 @@ You CAN manually load `desk.bundle.js` from the same origin:
 ```
 
 But you MUST:
-1. Discover the correct bundle hash first (see Â§10)
+1. Discover the correct bundle hash first (see §10)
 2. Poll-wait for dependencies before initializing your code
 3. Accept that this loads ~2MB of extra JS and may cause conflicts
 
@@ -217,7 +217,7 @@ If you need charts on a Web Page without loading desk.bundle, use:
 
 > "I'll set workspace content to `[{"type": "custom_block", "data": {"custom_block_name": "My Block", "col": 12}}]`"
 
-### âœ… REALITY
+### ✅ REALITY
 
 Frappe v15/v16 workspace `content` field stores a JSON array of blocks. The exact structure varies by Frappe version and any custom workspace themes (like SVA). The **correct minimal structure** for a standard Frappe v15+ workspace block is:
 
@@ -235,8 +235,8 @@ Frappe v15/v16 workspace `content` field stores a JSON array of blocks. The exac
 ```
 
 **Critical fields that Claude kept missing:**
-- `id` â€” **REQUIRED**. Every block needs a unique ID string. Without it, the workspace rendering may fail silently.
-- `type` â€” Must match exactly: `"header"`, `"paragraph"`, `"chart"`, `"shortcut"`, `"card"`, `"custom_block"`, `"number_card"`, `"onboarding"`, `"spacer"`
+- `id` — **REQUIRED**. Every block needs a unique ID string. Without it, the workspace rendering may fail silently.
+- `type` — Must match exactly: `"header"`, `"paragraph"`, `"chart"`, `"shortcut"`, `"card"`, `"custom_block"`, `"number_card"`, `"onboarding"`, `"spacer"`
 
 ### Working Block Types
 
@@ -376,7 +376,7 @@ new frappe.Chart(container, {
 4. **Custom workspace themes** may have their own rendering — verify by reading a working CHB on the same instance first
 
 
-## 7. Web Page â€” Limitations and Workarounds {#7-web-page}
+## 7. Web Page — Limitations and Workarounds {#7-web-page}
 
 ### What It Is
 
@@ -388,7 +388,7 @@ A `Web Page` creates a publicly routable page at `/<route>`. It's part of Frappe
 |-------|------|-------|
 | `name` | Data | Internal name |
 | `title` | Data | Page title |
-| `route` | Data | URL route (e.g., `my-dashboard` â†’ `/my-dashboard`) |
+| `route` | Data | URL route (e.g., `my-dashboard` → `/my-dashboard`) |
 | `content_type` | Select | "Rich Text", "Markdown", "HTML" |
 | `main_section` | Code | **v14**: Main HTML content field |
 | `main_section_html` | Code | **v15+**: Main HTML content field when content_type is HTML |
@@ -396,7 +396,7 @@ A `Web Page` creates a publicly routable page at `/<route>`. It's part of Frappe
 | `full_width` | Check | Set to 1 to remove page margins |
 | `show_title` | Check | Set to 0 to hide the page title |
 
-### âš ï¸ Field Name Confusion (Claude made this error)
+### ⚠️ Field Name Confusion (Claude made this error)
 
 **v14** uses `main_section` for the HTML content.
 **v15+** may use `main_section_html` OR `main_section` depending on `content_type`.
@@ -421,7 +421,7 @@ html_fields = [f for f in fields if 'html' in f['fieldname'].lower() or 'section
 If you MUST use `frappe.call()` patterns in a Web Page:
 
 ```javascript
-// Minimal shim â€” NOT full frappe.call
+// Minimal shim — NOT full frappe.call
 if (typeof frappe === 'undefined') window.frappe = {};
 if (!frappe.call) {
     frappe.call = function(opts) {
@@ -451,19 +451,19 @@ if (!frappe.call) {
 
 > "I'll load frappe-charts from jsdelivr CDN."
 
-### âœ… REALITY
+### ✅ REALITY
 
 Many browsers (especially Safari, Brave, Firefox with Enhanced Tracking Protection) **block third-party scripts** from CDN domains like:
 - `cdn.jsdelivr.net`
 - `cdnjs.cloudflare.com`
 - `unpkg.com`
 
-This is NOT a Frappe issue â€” it's browser Tracking Prevention. The scripts are silently blocked with no console error in some browsers.
+This is NOT a Frappe issue — it's browser Tracking Prevention. The scripts are silently blocked with no console error in some browsers.
 
 ### Rules
 
 1. **NEVER rely on external CDNs** for critical dashboard functionality.
-2. **Always use same-origin scripts** â€” load from `/assets/` on the same Frappe instance.
+2. **Always use same-origin scripts** — load from `/assets/` on the same Frappe instance.
 3. If you need a library that's not in Frappe's bundles, either:
    - Upload it as a File attachment and reference `/files/library-name.min.js`
    - Inline the library code directly in the HTML (increases payload but guarantees loading)
@@ -478,7 +478,7 @@ resp = requests.get(f"{BASE}/assets/frappe/dist/js/", headers=HDR)
 
 # Check if a specific library is inside a bundle
 resp = requests.get(f"{BASE}/assets/frappe/dist/js/libs.bundle.HASH.js", headers=HDR)
-has_chart = 'frappe.Chart' in resp.text  # Usually NO â€” it's in desk.bundle
+has_chart = 'frappe.Chart' in resp.text  # Usually NO — it's in desk.bundle
 ```
 
 ---
@@ -496,25 +496,25 @@ has_chart = 'frappe.Chart' in resp.text  # Usually NO â€” it's in desk.bund
 
 > "I'll create a custom sidebar inside my dashboard HTML and hide the Frappe sidebar."
 
-### âœ… CORRECT APPROACH
+### ✅ CORRECT APPROACH
 
-1. **Use Frappe's native Workspace sidebar** â€” don't fight it
+1. **Use Frappe's native Workspace sidebar** — don't fight it
 2. Create a **Workspace** for your dashboard (appears in the sidebar automatically)
 3. Use **horizontal top tabs** within the workspace content area for sub-navigation
 4. If embedding a full-page dashboard, the dashboard should NOT have its own sidebar
 
 ### â—ï¸ Workspace Sidebar Context Loss on `frappe.new_doc()`
 
-When a Client Script calls `frappe.new_doc('Other DocType', {...})`, the browser navigates to `/app/other-doctype/new`. If "Other DocType" is NOT linked in the current workspace, the sidebar switches from the workspace sidebar to a flat module sidebar. This is a common gotcha when building cross-DocType conversion flows (e.g., Lead â†' Candidate).
+When a Client Script calls `frappe.new_doc('Other DocType', {...})`, the browser navigates to `/app/other-doctype/new`. If "Other DocType" is NOT linked in the current workspace, the sidebar switches from the workspace sidebar to a flat module sidebar. This is a common gotcha when building cross-DocType conversion flows (e.g., Lead → Candidate).
 
-**Symptoms:** User clicks "Convert to Candidate" on a lead form â†' the Candidate Registration form opens â†' but the left sidebar changes from the workspace's People > Leads, Candidates, etc. to a generic module sidebar.
+**Symptoms:** User clicks "Convert to Candidate" on a lead form → the Candidate Registration form opens → but the left sidebar changes from the workspace's People > Leads, Candidates, etc. to a generic module sidebar.
 
 **Root cause:** Frappe resolves the sidebar from the workspace that "owns" the target DocType. If the target DocType isn't linked in the current workspace, Frappe falls back to the module sidebar.
 
 **Fixes (in order of preference):**
-1. **Ensure both DocTypes are linked in the same workspace** â€" add a shortcut block for the target DocType in the workspace content JSON.
-2. **Open in new tab** â€" use `window.open('/app/other-doctype/new?field=value', '_blank')` instead of `frappe.new_doc()`. Preserves the original workspace context in the parent tab.
-3. **Use `frappe.route_options` + `frappe.set_route()`** â€" navigate via the workspace-aware route: `frappe.route_options = {field: value}; frappe.set_route('app', 'other-doctype', 'new');`
+1. **Ensure both DocTypes are linked in the same workspace** — add a shortcut block for the target DocType in the workspace content JSON.
+2. **Open in new tab** — use `window.open('/app/other-doctype/new?field=value', '_blank')` instead of `frappe.new_doc()`. Preserves the original workspace context in the parent tab.
+3. **Use `frappe.route_options` + `frappe.set_route()`** — navigate via the workspace-aware route: `frappe.route_options = {field: value}; frappe.set_route('app', 'other-doctype', 'new');`
 
 ### Adding a Dashboard to the Sidebar
 
@@ -587,7 +587,7 @@ resp = requests.get(f"{BASE}/assets/frappe/dist/build.json", headers=HDR)
 |---------|-------|-----|
 | Double scrollbar | iframe height too small | Use `height: 100vh` or dynamically resize |
 | Top whitespace | Frappe page wrappers add padding | Negative margin or CSS override inside iframe |
-| No Frappe sidebar | Web Page doesn't have desk chrome | Expected â€” use workspace for sidebar |
+| No Frappe sidebar | Web Page doesn't have desk chrome | Expected — use workspace for sidebar |
 | Login redirect | Session cookie not passed | Use `credentials: 'include'` in fetch |
 | Cross-origin errors | Different subdomain | Ensure iframe src is same-origin |
 
@@ -669,7 +669,7 @@ for config_dt in ['SVAWorkspace Configuration', 'Workspace Configuration', 'Dash
 
 ### If Custom Theme Exists
 
-Study how existing dashboards are deployed on that instance and replicate the exact pattern â€” don't try to invent a new deployment approach.
+Study how existing dashboards are deployed on that instance and replicate the exact pattern — don't try to invent a new deployment approach.
 
 ---
 
@@ -679,9 +679,9 @@ Study how existing dashboards are deployed on that instance and replicate the ex
 
 > "I'll use a Server Script with `frappe.db.set_value('Page', 'my-page', 'script', js_code)` to deploy JS."
 
-### âœ… REALITY
+### ✅ REALITY
 
-- The `script` field of a Page doctype **has NO database column** â€” it's a virtual property
+- The `script` field of a Page doctype **has NO database column** — it's a virtual property
 - `frappe.db.set_value` writes to DB columns, so it will fail silently or error
 - Server Scripts themselves run in a **restricted sandbox** with limited imports
 
@@ -701,7 +701,7 @@ Study how existing dashboards are deployed on that instance and replicate the ex
 
 ---
 
-## 14. API Field Names â€” What's Real vs Virtual {#14-api-field-names}
+## 14. API Field Names — What's Real vs Virtual {#14-api-field-names}
 
 ### The Trap
 
@@ -719,7 +719,7 @@ When you fetch a Page via API, the response includes `script`, `style`, and `con
 }
 ```
 
-This makes it LOOK like these are database fields you can write to. They're NOT â€” they're loaded from the filesystem by `as_dict()`.
+This makes it LOOK like these are database fields you can write to. They're NOT — they're loaded from the filesystem by `as_dict()`.
 
 ### How to Tell
 
@@ -750,55 +750,55 @@ db_fields = [f['fieldname'] for f in fields if f.get('fieldtype') not in ['Secti
 
 ---
 
-## 15. Decision Tree â€” Which Deployment Path? {#15-decision-tree}
+## 15. Decision Tree — Which Deployment Path? {#15-decision-tree}
 
 ```
 START: Need to deploy a custom dashboard to Frappe
-â”‚
-â”œâ”€ Q1: Do you have developer_mode ON?
-â”‚  â”œâ”€ YES â†’ Use Page doctype (best option)
-â”‚  â”‚        â”œâ”€ Full desk context (jQuery, frappe.Chart, frappe.call)
-â”‚  â”‚        â”œâ”€ Proper URL: /app/my-dashboard
-â”‚  â”‚        â”œâ”€ Deploy JS/CSS via API
-â”‚  â”‚        â””â”€ Add to Workspace sidebar for navigation
-â”‚  â”‚
-â”‚  â””â”€ NO â†’ Continue to Q2
-â”‚
-â”œâ”€ Q2: Does the instance have a custom workspace theme?
-â”‚  â”œâ”€ YES â†’ Study the existing theme's deployment pattern
-â”‚  â”‚        â”œâ”€ Check for theme-specific configuration doctypes
-â”‚  â”‚        â”œâ”€ Replicate how existing dashboards are deployed
-â”‚  â”‚        â””â”€ May need iframe embedding in Custom HTML Block
-â”‚  â”‚
-â”‚  â””â”€ NO or UNKNOWN â†’ Continue to Q3
-â”‚
-â”œâ”€ Q3: Does your dashboard need frappe.Chart or frappe.call?
-â”‚  â”œâ”€ YES â†’ Use Custom HTML Block in Workspace
-â”‚  â”‚        â”œâ”€ Runs inside Desk context (all JS available)
-â”‚  â”‚        â”œâ”€ Create block â†’ Add to workspace content JSON
-â”‚  â”‚        â”œâ”€ Appears in sidebar via workspace
-â”‚  â”‚        â””â”€ âš ï¸ Content limit ~2MB
-â”‚  â”‚
-â”‚  â””â”€ NO (plain HTML/CSS or uses its own chart lib) â†’
-â”‚     Use Web Page
-â”‚     â”œâ”€ No desk context needed
-â”‚     â”œâ”€ Route: /my-dashboard
-â”‚     â”œâ”€ full_width: 1, show_title: 0
-â”‚     â””â”€ Optionally embed in workspace via iframe
-â”‚
-â”œâ”€ Q4: Are you enhancing an EXISTING form or list view (not building a new page)?
-â”‚  â”œâ”€ YES â†’ Use Client Script (see Â§18)
-â”‚  â”‚        â”œâ”€ Form scripts: frappe.ui.form.on() for status banners, journey steps, CTAs
-â”‚  â”‚        â”œâ”€ List scripts: frappe.listview_settings[] for formatters, row styling
-â”‚  â”‚        â”œâ”€ Deploy via API: POST to /api/resource/Client Script
-â”‚  â”‚        â””â”€ âš ï¸ Aggressively cached â€” see Â§19 for invalidation
-â”‚  â”‚
-â”‚  â””â”€ NO â†’ Continue to FALLBACK
-â”‚
-â””â”€ FALLBACK: If nothing works â†’
-   â”œâ”€ Ask user to enable developer_mode (even temporarily)
-   â”œâ”€ Deploy Page, then disable developer_mode
-   â””â”€ The Page will continue to work after disabling
+│
+├─ Q1: Do you have developer_mode ON?
+│  ├─ YES → Use Page doctype (best option)
+│  │        ├─ Full desk context (jQuery, frappe.Chart, frappe.call)
+│  │        ├─ Proper URL: /app/my-dashboard
+│  │        ├─ Deploy JS/CSS via API
+│  │        └─ Add to Workspace sidebar for navigation
+│  │
+│  └─ NO → Continue to Q2
+│
+├─ Q2: Does the instance have a custom workspace theme?
+│  ├─ YES → Study the existing theme's deployment pattern
+│  │        ├─ Check for theme-specific configuration doctypes
+│  │        ├─ Replicate how existing dashboards are deployed
+│  │        └─ May need iframe embedding in Custom HTML Block
+│  │
+│  └─ NO or UNKNOWN → Continue to Q3
+│
+├─ Q3: Does your dashboard need frappe.Chart or frappe.call?
+│  ├─ YES → Use Custom HTML Block in Workspace
+│  │        ├─ Runs inside Desk context (all JS available)
+│  │        ├─ Create block → Add to workspace content JSON
+│  │        ├─ Appears in sidebar via workspace
+│  │        └─ ⚠️ Content limit ~2MB
+│  │
+│  └─ NO (plain HTML/CSS or uses its own chart lib) →
+│     Use Web Page
+│     ├─ No desk context needed
+│     ├─ Route: /my-dashboard
+│     ├─ full_width: 1, show_title: 0
+│     └─ Optionally embed in workspace via iframe
+│
+├─ Q4: Are you enhancing an EXISTING form or list view (not building a new page)?
+│  ├─ YES → Use Client Script (see §18)
+│  │        ├─ Form scripts: frappe.ui.form.on() for status banners, journey steps, CTAs
+│  │        ├─ List scripts: frappe.listview_settings[] for formatters, row styling
+│  │        ├─ Deploy via API: POST to /api/resource/Client Script
+│  │        └─ ⚠️ Aggressively cached — see §19 for invalidation
+│  │
+│  └─ NO → Continue to FALLBACK
+│
+└─ FALLBACK: If nothing works →
+   ├─ Ask user to enable developer_mode (even temporarily)
+   ├─ Deploy Page, then disable developer_mode
+   └─ The Page will continue to work after disabling
 ```
 
 ---
@@ -1006,9 +1006,9 @@ print(f"Deploy: {resp2.status_code}")
 verify = requests.get(f"{BASE}/api/resource/Page/{page_name}", headers=HDR)
 stored_script = verify.json()['data'].get('script', '')
 if len(stored_script) < 10:
-    print("âš ï¸ WARNING: Script did not persist â€” developer_mode may be OFF!")
+    print("⚠️ WARNING: Script did not persist — developer_mode may be OFF!")
 else:
-    print(f"âœ… Script persisted ({len(stored_script)} chars)")
+    print(f"✅ Script persisted ({len(stored_script)} chars)")
     print(f"Access at: {BASE}/app/{page_name}")
 ```
 
@@ -1046,7 +1046,7 @@ if (!frappe.call) {
     };
 }
 
-// Your dashboard code here (NO frappe.Chart â€” use Chart.js or inline SVG)
+// Your dashboard code here (NO frappe.Chart — use Chart.js or inline SVG)
 frappe.call({
     method: 'frappe.client.get_list',
     args: { doctype: 'Your Doctype', fields: ['name', 'title'], limit_page_length: 20 },
@@ -1078,7 +1078,7 @@ print(f"Access at: {BASE}/my-dashboard-view")
 
 ---
 
-## 18. Client Script Deployment â€" Form and List View {#18-client-script-deployment}
+## 18. Client Script Deployment — Form and List View {#18-client-script-deployment}
 
 Client Scripts are the correct deployment target for **enhancing existing forms and list views** without building full dashboards. They run in Desk context (jQuery, `frappe.call`, full DOM access) and deploy via API without `developer_mode`.
 
@@ -1104,7 +1104,7 @@ resp = requests.put(f"{BASE}/api/resource/Client Script/My DocType - Form Enhanc
     json={"script": updated_js_code})
 ```
 
-### Form Scripts â€" `frappe.ui.form.on()`
+### Form Scripts — `frappe.ui.form.on()`
 
 Form scripts fire on lifecycle events: `refresh`, `onload`, `validate`, `before_save`, plus per-field triggers.
 
@@ -1201,9 +1201,9 @@ function do_convert() {
 window.do_convert = do_convert;  // Required for onclick in injected HTML
 ```
 
-**â—ï¸ `window.fn_name` is required** â€" functions defined inside a Client Script are not accessible from inline `onclick` handlers in injected HTML. Expose them via `window`.
+**â—ï¸ `window.fn_name` is required** — functions defined inside a Client Script are not accessible from inline `onclick` handlers in injected HTML. Expose them via `window`.
 
-**â—ï¸ Sidebar context loss** â€" `frappe.new_doc()` navigates away and may switch the workspace sidebar. See Â§9 for fixes.
+**â—ï¸ Sidebar context loss** — `frappe.new_doc()` navigates away and may switch the workspace sidebar. See §9 for fixes.
 
 #### Pattern 6: CSS Injection (Idempotent)
 
@@ -1234,7 +1234,7 @@ if ($ctrl && frm.doc.creation) {
 }
 ```
 
-### List View Scripts â€" `frappe.listview_settings[]`
+### List View Scripts — `frappe.listview_settings[]`
 
 List scripts customize the DocType's list view: indicators, formatters, row decoration.
 
@@ -1287,11 +1287,11 @@ frappe.listview_settings['My DocType'] = {
 - [ ] Script `enabled` is `1`?
 - [ ] `dt` matches exact DocType name (case-sensitive)?
 - [ ] `view` is correct (`Form` or `List`)?
-- [ ] Cleared server cache? (see Â§19)
+- [ ] Cleared server cache? (see §19)
 - [ ] Hard-refreshed browser? (`Cmd+Shift+R` or `Ctrl+Shift+R`)
 - [ ] Added `console.log()` markers to verify script loads?
 - [ ] Wrapped main logic in `try/catch` to surface errors?
-- [ ] Using ASCII-only characters? (Unicode â†'/âœ" can break in some Frappe versions)
+- [ ] Using ASCII-only characters? (Unicode →/✓ can break in some Frappe versions)
 - [ ] All inline styles? (CSS classes from injected `<style>` may not apply on first render due to timing)
 
 ---
@@ -1349,11 +1349,11 @@ print("Deployed and cache cleared. User must Cmd+Shift+R in browser.")
 | 13 | Putting `<style>`/`<script>` in `html` field of CHB | 3+ times | Frappe silently strips both via `remove_script_and_style()` |
 | 14 | Using `document.getElementById()` in CHB scripts | 3+ times | CHBs run in Shadow DOM — must use `root_element.querySelector()` |
 | 15 | Only updating workspace `content` JSON, not `custom_blocks` child table | 3+ times | Frappe uses child table to render; content JSON mismatch causes blank page |
-| 16 | Client Script deployed but nothing renders | 2+ times | Stale cache â€" must clear server cache via `frappe.sessions.clear` AND hard-refresh browser |
-| 17 | HTML field overlaps with adjacent fields | 1+ times | HTML field shares row with other fields â€" must wrap in own Section Break with `hide_border: 1` |
-| 18 | Inline onclick can't call Client Script functions | 2+ times | Client Script scope is isolated â€" must expose function via `window.fn_name = fn_name` |
-| 19 | `frappe.new_doc()` changes workspace sidebar | 1+ times | Target DocType not linked in current workspace â€" see Â§9 for fixes |
-| 20 | List view formatters don't appear | 1+ times | Formatters only apply to user-visible columns â€" `in_list_view: 1` doesn't override user config |
+| 16 | Client Script deployed but nothing renders | 2+ times | Stale cache — must clear server cache via `frappe.sessions.clear` AND hard-refresh browser |
+| 17 | HTML field overlaps with adjacent fields | 1+ times | HTML field shares row with other fields — must wrap in own Section Break with `hide_border: 1` |
+| 18 | Inline onclick can't call Client Script functions | 2+ times | Client Script scope is isolated — must expose function via `window.fn_name = fn_name` |
+| 19 | `frappe.new_doc()` changes workspace sidebar | 1+ times | Target DocType not linked in current workspace — see §9 for fixes |
+| 20 | List view formatters don't appear | 1+ times | Formatters only apply to user-visible columns — `in_list_view: 1` doesn't override user config |
 
 
 ### ⚠️ CRITICAL: Workspace `custom_blocks` Child Table Must Be Synced
@@ -1409,7 +1409,7 @@ def set_workspace_chb(ws_name, chb_name, header_text=None):
 
 ---
 
-## 20. Platform Order â€" Greenfield Build Sequence {#20-platform-order}
+## 20. Platform Order — Greenfield Build Sequence {#20-platform-order}
 
 When building a new Frappe application or module from scratch, implement in this order. Each layer must be stable before the next depends on it. Do NOT implement as a random ticket queue.
 
@@ -1436,10 +1436,10 @@ All client work happens in Layer 4. Layers 1-3 are never modified for client-spe
 
 | Layer | Contains | Modifiable? |
 |---|---|---|
-| 1 â€" Framework | Core platform, ORM, permissions engine | Never |
-| 2 â€" Shared Extensions | Geo data, shared components, base theme | Never |
-| 3 â€" Core Product | Grant lifecycle, compliance, core workflows | Never |
-| 4 â€" Client App | All client-specific customizations | **Your work** |
+| 1 — Framework | Core platform, ORM, permissions engine | Never |
+| 2 — Shared Extensions | Geo data, shared components, base theme | Never |
+| 3 — Core Product | Grant lifecycle, compliance, core workflows | Never |
+| 4 — Client App | All client-specific customizations | **Your work** |
 
 If a requirement needs a change in Layers 1-3, **STOP and escalate to the System Architect**.
 
@@ -1806,6 +1806,81 @@ Step 3: If minimal CHB works but complex script doesn't:
 Step 4: Verify CDN is not blocking chart render (§6).
          → Replace CDN load with inline library or frappe.Chart
 ```
+
+---
+
+## Appendix: India Drill-down Map CHB (Geo Asset Contract) {#appendix-geo}
+
+When the CHB is an India drill-down map (State → District → Block), use the unified
+TopoJSON dataset that lives in this repo under `assets/india-admin-geo/topo/`.
+Design tokens, ColorBrewer picker, hover-card field menu, and the full drop-in block
+are in **`frappe-design/REFERENCE.md` §6.6**. Everything below is deployment-only.
+
+### Two delivery modes
+
+**Production — install-time copy into the app's public assets (recommended):**
+```bash
+mkdir -p apps/<app>/<app>/public/geo
+cd apps/<app>/<app>/public/geo
+for f in states districts blocks; do
+  curl -sSL -o "${f}.topojson" \
+    "https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/${f}.topojson"
+done
+cd -
+bench build --app <app>
+```
+Reference from the CHB as `/assets/<app>/geo/<layer>.topojson`. No runtime CDN dependency.
+
+**Prototype — CDN runtime:**
+Set `GEO = "https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo"` in the CHB. Pin `@v1.0.0` or a commit SHA for anything past a demo. Not production.
+
+### Whitelisted data method
+
+The CHB calls one method per level: `<app>.api.map_metrics(level, state_lgd?, district_lgd?)`.
+Template at `assets/india-admin-geo/reference/api.py` — copy into `apps/<app>/<app>/api.py`,
+edit the DocType/field constants at the top. Returns
+`[{key, metric, grantees, portfolios:[{name,count}], aspirational, ...user-picked keys}]`.
+
+### CHB wiring specifics (in addition to §6, §5, §2 of Part B)
+
+- **Leaflet + topojson-client from CDN:** unpkg.com is allowed by the Frappe CDN policy
+  (see §8 of Part A). If your instance blocks unpkg, vendor Leaflet into `/assets/<app>/geo/vendor/`.
+- **Canvas rendering.** `L.map(el, { preferCanvas: true })` — required for 6,800 block polygons.
+- **Shadow DOM.** The map mount element must be queried via `root_element.querySelector`
+  (never `document.getElementById` — see §3 of Part B). Leaflet then mounts into that element
+  normally; it does not need any shadow-DOM special handling beyond the root lookup.
+- **Gzip.** If nginx is not sending `Content-Encoding: gzip` for `.topojson`, cold load of
+  `blocks.topojson` is 5.6 MB instead of 1.5 MB. Add to nginx.conf:
+  ```
+  gzip_types application/json application/geo+json;
+  ```
+- **Label-match rule still applies** (§2 of Part B) — the CHB's `custom_block_name` must match
+  the workspace child table `label` exactly.
+
+### Verification additions to the standard checklist
+
+In addition to `verify_chb_deployment()` (§8 of Part B):
+
+```python
+def verify_geo_assets(base, hdr, app):
+    for f in ["states", "districts", "blocks"]:
+        url = f"{base}/assets/{app}/geo/{f}.topojson"
+        r = requests.head(url)
+        print(f"  {'✅' if r.status_code == 200 else '❌'} {url} → {r.status_code}")
+```
+
+If any of the three returns 404 → user forgot `bench build --app <app>` after copying.
+
+### Known failure modes specific to the geo CHB
+
+1. **Diacritic join failure.** If the user's grant records key on `state_name` (e.g. "Bihar")
+   but someone changed a row to "Bihār", the map silently drops those records. Force the API
+   method to aggregate on `state_lgd` only.
+2. **Delhi "Preet Vihar" block** has null `district_lgd`. Either override to `0174` (East Delhi)
+   in the user's data OR filter it out of drill-down. Ask in Phase 1.
+3. **Missing newly-created districts.** The unified dataset has 780 districts (as of Feb 2025).
+   If the user's DB has a `district_lgd` not in `districts.topojson`, show a "map coverage pending"
+   note in the info card instead of dropping the record.
 
 ---
 

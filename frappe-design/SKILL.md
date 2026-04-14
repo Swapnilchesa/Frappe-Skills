@@ -6,11 +6,17 @@ description: >
   and visual design (dashboard aesthetic, component library, color system, typography,
   charts, infographic components, India maps). Use this skill whenever: designing or speccing
   DocTypes, reviewing field definitions, planning workflows or approval chains, building
-  dashboards or UI components, designing form layouts, configuring list views, or any
-  conversation about how something should look or behave in Frappe. Part A covers data
-  design (spec-first, code-never). Part B covers visual design (Refined Utility aesthetic,
-  ColorBrewer palettes, Shadcn-level craft). Also read REFERENCE.md in this directory for
-  complete CSS tokens, hex values, and component code templates.
+  dashboards or UI components, designing form layouts, configuring list views, building an
+  India drill-down map (State → District → Block), picking a ColorBrewer scheme for a
+  choropleth, plotting grants/CSR/scheme data geographically, or any conversation about how
+  something should look or behave in Frappe. Also triggers on: "India map", "drill-down map",
+  "choropleth", "block map", "district map", "grants map", "CSR dashboard map", "mGrant map",
+  "LGD map", "aspirational districts". Part A covers data design (spec-first, code-never).
+  Part B covers visual design (Refined Utility aesthetic, ColorBrewer palettes, Shadcn-level
+  craft, India drill-down map component). Also read REFERENCE.md in this directory for
+  complete CSS tokens, hex values, ColorBrewer palettes, the India drill-down map pattern
+  (§6.6), and drop-in CHB code templates. Geo assets live at
+  `assets/india-admin-geo/topo/{states,districts,blocks}.topojson` with jsDelivr mirrors.
   Cross-references: frappe-build (for deployment), frappe-reports (for Script Reports).
 ---
 

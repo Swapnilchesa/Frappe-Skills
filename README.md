@@ -27,3 +27,20 @@ Built from real production deployment sessions on Frappe v16 instances. Every ru
 ## License
 
 MIT
+
+
+## Bundled data asset — `assets/india-admin-geo/`
+
+Canonical India admin hierarchy (State → District → CD Block), LGD-keyed, web-optimised TopoJSON.
+Shipped in this repo so the `frappe-design` skill can build drill-down maps without any external
+data pipeline.
+
+| File | Features | jsDelivr URL |
+|---|---:|---|
+| `topo/states.topojson` | 36 | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/states.topojson` |
+| `topo/districts.topojson` | 780 | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/districts.topojson` |
+| `topo/blocks.topojson` | 6,803 | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/blocks.topojson` |
+
+See `assets/india-admin-geo/README.md` for schema, install-time copy instructions, and provenance. Drop-in CHB code is at `assets/india-admin-geo/reference/custom_html_block.html`. The design pattern and ColorBrewer picker lives in `frappe-design/REFERENCE.md` §6.6.
+
+Data license: **ODbL-1.0** (derived from geoBoundaries + Survey of India). The skill files themselves remain MIT.
