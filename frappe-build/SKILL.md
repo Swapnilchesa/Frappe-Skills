@@ -1823,13 +1823,13 @@ are in **`frappe-design/REFERENCE.md` §6.6**. Everything below is deployment-on
 mkdir -p apps/<app>/<app>/public/geo
 cd apps/<app>/<app>/public/geo
 for f in states districts blocks; do
-  curl -sSL -o "${f}.topojson" \
-    "https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/${f}.topojson"
+  curl -sSL -o "${f}.json" \
+    "https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/${f}.json"
 done
 cd -
 bench build --app <app>
 ```
-Reference from the CHB as `/assets/<app>/geo/<layer>.topojson`. No runtime CDN dependency.
+Reference from the CHB as `/assets/<app>/geo/<layer>.json`. No runtime CDN dependency.
 
 **Prototype — CDN runtime:**
 Set `GEO = "https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo"` in the CHB. Pin `@v1.0.0` or a commit SHA for anything past a demo. Not production.
@@ -1849,8 +1849,8 @@ edit the DocType/field constants at the top. Returns
 - **Shadow DOM.** The map mount element must be queried via `root_element.querySelector`
   (never `document.getElementById` — see §3 of Part B). Leaflet then mounts into that element
   normally; it does not need any shadow-DOM special handling beyond the root lookup.
-- **Gzip.** If nginx is not sending `Content-Encoding: gzip` for `.topojson`, cold load of
-  `blocks.topojson` is 5.6 MB instead of 1.5 MB. Add to nginx.conf:
+- **Gzip.** If nginx is not sending `Content-Encoding: gzip` for `.json`, cold load of
+  `blocks.json` is 5.6 MB instead of 1.5 MB. Add to nginx.conf:
   ```
   gzip_types application/json application/geo+json;
   ```
@@ -1864,7 +1864,7 @@ In addition to `verify_chb_deployment()` (§8 of Part B):
 ```python
 def verify_geo_assets(base, hdr, app):
     for f in ["states", "districts", "blocks"]:
-        url = f"{base}/assets/{app}/geo/{f}.topojson"
+        url = f"{base}/assets/{app}/geo/{f}.json"
         r = requests.head(url)
         print(f"  {'✅' if r.status_code == 200 else '❌'} {url} → {r.status_code}")
 ```
@@ -1879,7 +1879,7 @@ If any of the three returns 404 → user forgot `bench build --app <app>` after 
 2. **Delhi "Preet Vihar" block** has null `district_lgd`. Either override to `0174` (East Delhi)
    in the user's data OR filter it out of drill-down. Ask in Phase 1.
 3. **Missing newly-created districts.** The unified dataset has 780 districts (as of Feb 2025).
-   If the user's DB has a `district_lgd` not in `districts.topojson`, show a "map coverage pending"
+   If the user's DB has a `district_lgd` not in `districts.json`, show a "map coverage pending"
    note in the info card instead of dropping the record.
 
 ---

@@ -16,7 +16,7 @@ description: >
   craft, India drill-down map component). Also read REFERENCE.md in this directory for
   complete CSS tokens, hex values, ColorBrewer palettes, the India drill-down map pattern
   (§6.6), and drop-in CHB code templates. Geo assets live at
-  `assets/india-admin-geo/topo/{states,districts,blocks}.topojson` with jsDelivr mirrors.
+  `assets/india-admin-geo/topo/{states,districts,blocks}.json` with jsDelivr mirrors.
   Cross-references: frappe-build (for deployment), frappe-reports (for Script Reports).
 ---
 

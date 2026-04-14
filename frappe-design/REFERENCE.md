@@ -565,10 +565,10 @@ For lead/conversion pipelines. Pure HTML, no library needed.
 ### §6.6 — India Drill-down Map (State → District → Block)
 
 **Canonical dataset:** LGD-keyed unified TopoJSON living in this repo at
-`assets/india-admin-geo/topo/{states,districts,blocks}.topojson`. 36 states, 780 districts, 6,803 CD blocks. Every block carries its full LGD parent chain (`state_lgd` → `district_lgd`) so drill-down is a single `.filter()`. See `assets/india-admin-geo/README.md` for schema, jsDelivr URLs, and provenance.
+`assets/india-admin-geo/topo/{states,districts,blocks}.json`. 36 states, 780 districts, 6,803 CD blocks. Every block carries its full LGD parent chain (`state_lgd` → `district_lgd`) so drill-down is a single `.filter()`. See `assets/india-admin-geo/README.md` for schema, jsDelivr URLs, and provenance.
 
 **Two delivery modes:**
-- **Production (install-time copy, recommended):** `curl` the three files into `apps/<app>/<app>/public/geo/` and reference as `/assets/<app>/geo/states.topojson` etc. No runtime CDN dependency. Get the copy script from `assets/india-admin-geo/README.md`.
+- **Production (install-time copy, recommended):** `curl` the three files into `apps/<app>/<app>/public/geo/` and reference as `/assets/<app>/geo/states.json` etc. No runtime CDN dependency. Get the copy script from `assets/india-admin-geo/README.md`.
 - **Prototype (CDN):** reference directly from `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/…`. Pin `@v1.0.0` (or a commit SHA) for anything past demo.
 
 **Drop-in CHB code:** `assets/india-admin-geo/reference/custom_html_block.html`. Paste into a Custom HTML Block with placeholders filled — see Phase 1 below for what to ask the user.

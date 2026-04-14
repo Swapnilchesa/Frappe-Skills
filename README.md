@@ -37,9 +37,9 @@ data pipeline.
 
 | File | Features | jsDelivr URL |
 |---|---:|---|
-| `topo/states.topojson` | 36 | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/states.topojson` |
-| `topo/districts.topojson` | 780 | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/districts.topojson` |
-| `topo/blocks.topojson` | 6,803 | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/blocks.topojson` |
+| `topo/states.json` | 36 | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/states.json` |
+| `topo/districts.json` | 780 | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/districts.json` |
+| `topo/blocks.json` | 6,803 | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/blocks.json` |
 
 See `assets/india-admin-geo/README.md` for schema, install-time copy instructions, and provenance. Drop-in CHB code is at `assets/india-admin-geo/reference/custom_html_block.html`. The design pattern and ColorBrewer picker lives in `frappe-design/REFERENCE.md` §6.6.
 

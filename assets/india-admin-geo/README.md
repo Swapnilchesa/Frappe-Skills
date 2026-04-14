@@ -6,9 +6,9 @@ Canonical, web-optimised GeoJSON/TopoJSON for India's three-level admin hierarch
 
 | File | Features | Size | jsDelivr URL |
 |---|---:|---:|---|
-| `topo/states.topojson` | 36 | 198 KB | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/states.topojson` |
-| `topo/districts.topojson` | 780 | 1.66 MB | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/districts.topojson` |
-| `topo/blocks.topojson` | 6,803 | 5.59 MB | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/blocks.topojson` |
+| `topo/states.json` | 36 | 198 KB | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/states.json` |
+| `topo/districts.json` | 780 | 1.66 MB | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/districts.json` |
+| `topo/blocks.json` | 6,803 | 5.59 MB | `https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/blocks.json` |
 
 Pin a specific commit/tag for production: replace `@main` with `@v1.0.0` (or the short SHA).
 
@@ -40,14 +40,14 @@ TopoJSON object names: `topo.objects.states`, `topo.objects.districts`, `topo.ob
 mkdir -p apps/<app>/<app>/public/geo
 cd apps/<app>/<app>/public/geo
 for f in states districts blocks; do
-  curl -sSL -o "${f}.topojson" \
-    "https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/${f}.topojson"
+  curl -sSL -o "${f}.json" \
+    "https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo/${f}.json"
 done
 cd -
 bench build --app <app>
 ```
 
-Then reference as `/assets/<app>/geo/states.topojson` etc. inside the Custom HTML Block. No runtime CDN dependency.
+Then reference as `/assets/<app>/geo/states.json` etc. inside the Custom HTML Block. No runtime CDN dependency.
 
 ## Runtime / CDN mode (prototypes only)
 

@@ -13,7 +13,7 @@ from frappe import _
 GRANT_DOCTYPE        = "Grant"              # name of the DocType carrying records
 STATE_LGD_FIELD      = "state_lgd"          # string, zero-padded ("23")
 DISTRICT_LGD_FIELD   = "district_lgd"       # string
-BLOCK_KEY_FIELD      = "block_shape_id"     # matches block_shape_id in blocks.topojson
+BLOCK_KEY_FIELD      = "block_shape_id"     # matches block_shape_id in blocks.json
 METRIC_FIELD         = "sanctioned_amount"  # numeric field to aggregate
 METRIC_AGG           = "sum"                # sum | count | count_distinct | avg
 GRANTEE_FIELD        = "grantee"            # link/data field — used for DISTINCT grantee count

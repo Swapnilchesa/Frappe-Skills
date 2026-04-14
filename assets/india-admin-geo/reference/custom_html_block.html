@@ -1,7 +1,7 @@
 <!--
   mGrant-style India drill-down map — Frappe Custom HTML Block
   Repo:   https://github.com/Swapnilchesa/Frappe-Skills
-  Assets: /assets/<app>/geo/{states,districts,blocks}.topojson  (install-time copy, recommended)
+  Assets: /assets/<app>/geo/{states,districts,blocks}.json  (install-time copy, recommended)
      or   https://cdn.jsdelivr.net/gh/Swapnilchesa/Frappe-Skills@main/assets/india-admin-geo/topo  (prototype only)
 
   REPLACE PLACEHOLDERS (filled at skill invocation time):
@@ -156,7 +156,7 @@
 
   async function loadTopo(name){
     if (cache[name]) return cache[name];
-    const r = await fetch(`${GEO}/${name}.topojson`);
+    const r = await fetch(`${GEO}/${name}.json`);
     const t = await r.json();
     cache[name] = topojson.feature(t, t.objects[name]);
     return cache[name];

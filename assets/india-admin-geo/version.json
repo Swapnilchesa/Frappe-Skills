@@ -8,14 +8,29 @@
     "blocks": 6803
   },
   "sizes_bytes": {
-    "states.topojson": 202762,
-    "districts.topojson": 1696220,
-    "blocks.topojson": 5724029
+    "states.json": 202762,
+    "districts.json": 1696220,
+    "blocks.json": 5724029
   },
   "schema": {
-    "states": ["state_name", "state_lgd"],
-    "districts": ["state_name", "state_lgd", "district_name", "district_lgd"],
-    "blocks": ["block_name", "block_shape_id", "state_name", "state_lgd", "district_name", "district_lgd"]
+    "states": [
+      "state_name",
+      "state_lgd"
+    ],
+    "districts": [
+      "state_name",
+      "state_lgd",
+      "district_name",
+      "district_lgd"
+    ],
+    "blocks": [
+      "block_name",
+      "block_shape_id",
+      "state_name",
+      "state_lgd",
+      "district_name",
+      "district_lgd"
+    ]
   },
   "object_names": {
     "states": "topo.objects.states",
@@ -24,5 +39,6 @@
   },
   "known_gaps": [
     "Delhi Preet Vihar block: district_lgd null (parent 'Nazul' has no LGD)"
-  ]
+  ],
+  "notes": "File extension is .json (not .topojson) so jsDelivr auto-gzips and browsers identify MIME correctly. Content is TopoJSON format; topo.objects.{states,districts,blocks} as before."
 }
