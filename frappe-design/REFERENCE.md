@@ -672,7 +672,8 @@ const PORTFOLIO = {
 #### Implementation contract (do not deviate)
 
 - **Never key on `state_name`** (Unicode vs ASCII mismatch — `Bihār` vs `bihar`). Always `state_lgd` (zero-padded string).
-- Use **Leaflet + topojson-client** (not D3) — handles 6,800 block polygons on canvas without DOM blow-up. `preferCanvas: true`.
+- Use **Leaflet + topojson-client** (not D3) — handles 6,800 block polygons on canvas without DOM blow-up.
+- **Single shared canvas renderer (load-bearing).** At map init: `preferCanvas: true` **and** declare `const sharedRenderer = L.canvas()` once. Pass `renderer: sharedRenderer` into every `L.geoJSON({...})` option bag. Never call `L.canvas()` a second time. Why: `L.canvas()` is a factory — each call creates a new `<canvas>` DOM element in `.leaflet-overlay-pane`. If you add a decorative parent-outline layer (even with `interactive: false`), its canvas stacks on top and the topmost canvas captures all pointer events — click handlers on the layer below never fire. `interactive:false` suppresses Leaflet's per-layer hit-test but does NOT bypass DOM-level pointer-event capture. Invariant: `document.querySelectorAll(".leaflet-overlay-pane canvas").length === 1` throughout the session. Test with a real mouse click (Puppeteer `page.mouse.click(x,y)`); programmatic `layer.fire("click")` or framework-internal setSelection calls bypass the click path and mask the bug.
 - **No `localStorage` / `sessionStorage`** — Frappe Desk strips. Use in-memory cache keyed on LGD.
 - Basemap: CARTO light (no token). One level of zoom control.
 - `frappe.call` to `<app>.api.map_metrics` per level, whitelisted. Returns `[{key, metric, <user-picked fields>, portfolios:[{name,count}], aspirational}]`. See `assets/india-admin-geo/reference/api.py`.

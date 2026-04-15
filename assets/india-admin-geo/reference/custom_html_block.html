@@ -146,7 +146,10 @@
   }
 
   const mapEl = document.getElementById("mgMap");
-  const map = L.map(mapEl, { preferCanvas:true, zoomControl:true }).setView([22.5, 80], 5);
+  // Single shared canvas renderer — see frappe-design REFERENCE §6.6.
+  // Never call L.canvas() a second time; every L.geoJSON below reuses this instance.
+  const sharedRenderer = L.canvas();
+  const map = L.map(mapEl, { preferCanvas:true, zoomControl:true, renderer: sharedRenderer }).setView([22.5, 80], 5);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
     { attribution:"© OSM · © CARTO", subdomains:"abcd", maxZoom:14 }).addTo(map);
 
@@ -229,6 +232,7 @@
     const values = fc.features.map(f => (metrics[f.properties.state_lgd]||{}).metric);
     const breaks = quantiles(values, 5);
     currentLayer = L.geoJSON(fc, {
+      renderer: sharedRenderer,
       style: f => ({
         color:"#1f2937", weight:1,
         fillColor: colorFor((metrics[f.properties.state_lgd]||{}).metric, breaks),
@@ -255,6 +259,7 @@
     const values = filtered.features.map(f=>(metrics[f.properties.district_lgd]||{}).metric);
     const breaks = quantiles(values, 5);
     currentLayer = L.geoJSON(filtered, {
+      renderer: sharedRenderer,
       style: f => ({
         color:"#374151", weight:0.8,
         fillColor: colorFor((metrics[f.properties.district_lgd]||{}).metric, breaks),
@@ -283,6 +288,7 @@
     const filtered = { type:"FeatureCollection", features: fc.features.filter(x=>x.properties.district_lgd===district_lgd) };
     const metrics = await getMetrics("district", {state_lgd, district_lgd});
     currentLayer = L.geoJSON(filtered, {
+      renderer: sharedRenderer,
       style: () => ({ color:"#9ca3af", weight:0.4, fillColor:"#d1d5db", fillOpacity:0.25 }),
       onEachFeature:(f,l)=>{
         l.on("mouseover", e=>{ e.target.setStyle({color:"#dc2626", weight:2, fillColor:"#ef4444", fillOpacity:0.45}); renderHoverCard("district", f.properties, metrics[f.properties.block_shape_id]); });

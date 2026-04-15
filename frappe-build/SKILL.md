@@ -1846,6 +1846,7 @@ edit the DocType/field constants at the top. Returns
 - **Leaflet + topojson-client from CDN:** unpkg.com is allowed by the Frappe CDN policy
   (see §8 of Part A). If your instance blocks unpkg, vendor Leaflet into `/assets/<app>/geo/vendor/`.
 - **Canvas rendering.** `L.map(el, { preferCanvas: true })` — required for 6,800 block polygons.
+- **Single shared canvas renderer (non-negotiable).** In addition to `preferCanvas: true`, declare `const sharedRenderer = L.canvas()` once at map init and pass `renderer: sharedRenderer` into every `L.geoJSON({...})` option bag. Never call `L.canvas()` twice. `L.canvas()` is a factory — a second call creates a second `<canvas>` in `.leaflet-overlay-pane`. A decorative parent-outline overlay (even with `interactive: false`) stacked on top will swallow every click: the topmost DOM canvas captures pointer events before Leaflet's per-layer hit-test runs, and the clickable layer below never fires. See §6.6 of `frappe-design/REFERENCE.md` for the full rationale.
 - **Shadow DOM.** The map mount element must be queried via `root_element.querySelector`
   (never `document.getElementById` — see §3 of Part B). Leaflet then mounts into that element
   normally; it does not need any shadow-DOM special handling beyond the root lookup.
@@ -1881,6 +1882,18 @@ If any of the three returns 404 → user forgot `bench build --app <app>` after 
 3. **Missing newly-created districts.** The unified dataset has 780 districts (as of Feb 2025).
    If the user's DB has a `district_lgd` not in `districts.json`, show a "map coverage pending"
    note in the info card instead of dropping the record.
+4. **Canvas stacking swallows clicks.** Symptom: hover works, cursor is `pointer`, but clicks on
+   state/district polygons do nothing — drill-down is dead. Root cause: a second `L.canvas()`
+   call created a second `<canvas>` in `.leaflet-overlay-pane`; the topmost one (usually a
+   decorative parent-outline overlay with `interactive: false`) captures pointer events before
+   Leaflet's hit-test runs. `interactive: false` is not enough — it suppresses per-layer
+   hit-testing but not DOM pointer-event capture. Diagnostic in DevTools console:
+   `document.querySelectorAll(".leaflet-overlay-pane canvas").length` — must be `1`. Fix: one
+   `const sharedRenderer = L.canvas()` at init, `renderer: sharedRenderer` on every
+   `L.geoJSON`, no second factory call anywhere. **Testing note:** reproduce with a real mouse
+   click (Puppeteer `page.mouse.click(x,y)`). Programmatic shortcuts like `layer.fire("click")`
+   or a framework-internal `setSelection(...)` call bypass the click path and will pass even
+   when the bug is live. A green eval run via shortcuts is not a green eval run.
 
 ---
 
